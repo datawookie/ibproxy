@@ -32,3 +32,4 @@ loggers:
   asyncio:    {level: WARNING}
   httpcore:   {level: WARNING}
   urllib3:    {level: WARNING}
+  ibkr_oauth_flow: {level: INFO}

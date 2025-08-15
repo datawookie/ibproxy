@@ -3,69 +3,66 @@ from fastapi import FastAPI, HTTPException
 import asyncio
 import logging
 from pathlib import Path
-import time
 
 import uvicorn
 import yaml
 
 import ibkr_oauth_flow
 
-from .const import VERSION, API_HOST, API_PORT, WORKERS
-
-# logging.basicConfig(level=logging.INFO)
+from .const import VERSION, API_HOST, API_PORT
 
 LOGGING_CONFIG_PATH = Path(__file__).parent / "logging" / "logging.yaml"
 
 with open(LOGGING_CONFIG_PATH) as f:
     LOGGING_CONFIG = yaml.safe_load(f)
 
-# # Global IBKR connection
-# ib = IB()
-
-# @app.on_event("startup")
-# async def startup_event():
-#     """Connect to IBKR when the app starts."""
-#     try:
-#         logging.info("Connecting to IBKR...")
-#         await asyncio.get_event_loop().run_in_executor(
-#             None, lambda: ib.connect("127.0.0.1", 7497, clientId=1)
-#         )
-#         logging.info("Connected to IBKR.")
-#     except Exception as e:
-#         logging.error(f"Could not connect to IBKR: {e}")
-#         raise
-
-# @app.on_event("shutdown")
-# async def shutdown_event():
-#     """Disconnect from IBKR when the app stops."""
-#     logging.info("Disconnecting from IBKR...")
-#     await asyncio.get_event_loop().run_in_executor(None, ib.disconnect)
-
-# @app.get("/market_data/{symbol}")
-# async def get_market_data(symbol: str):
-#     """Fetch market data for a given symbol."""
-#     try:
-#         contract = Stock(symbol.upper(), "SMART", "USD")
-#         ticker = ib.reqMktData(contract, "", False, False)
-
-#         # Give IBKR some time to respond
-#         await asyncio.sleep(1)
-
-#         return {
-#             "symbol": symbol.upper(),
-#             "bid": ticker.bid,
-#             "ask": ticker.ask,
-#             "last": ticker.last
-#         }
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-
 app = FastAPI(title="IBKR Proxy Service", version=VERSION)
 
+# TICKLE LOOP ==================================================================
+
+# These are initialised in main().
+#
+auth = None
+tickle_task = None
+
+# Seconds between tickling the IBKR API.
+#
+TICKLE_INTERVAL = 10
+
+async def tickle_loop():
+    """Periodically call auth.tickle() while the app is running."""
+    while True:
+        try:
+            auth.tickle()
+        except Exception as e:
+            logging.error(f"Tickle failed: {e}")
+        await asyncio.sleep(TICKLE_INTERVAL)
+
+# ==============================================================================
+
+@app.on_event("startup")
+async def startup_event():
+    global tickle_task
+    tickle_task = asyncio.create_task(tickle_loop())
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    global tickle_task
+    if tickle_task:
+        tickle_task.cancel()
+        try:
+            await tickle_task
+        except asyncio.CancelledError:
+            pass
+
+# ==============================================================================
+
 def main():
+    global auth
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--debug", action="store_true", help="Debugging mode.")
-    parser.add_argument("--no-reload", action="store_true", help="Don't reload (for production).")
     args = parser.parse_args()
 
     if args.debug:
@@ -81,17 +78,18 @@ def main():
     auth.ssodh_init()
     auth.validate_sso()
 
-    # # This will keep session alive.
-    # for _ in range(3):
-    #     auth.tickle()
-    #     time.sleep(10)
-
     uvicorn.run(
         "proxy.main:app",
         host=API_HOST,
         port=API_PORT,
-        workers=WORKERS,
-        reload=not args.no_reload,
+        #
+        # Can only have a single worker and cannot support reload.
+        #
+        # This is because we can only have a single connection to the IBKR API.
+        #
+        workers=1,
+        reload=False,
+        #
         log_config=LOGGING_CONFIG,
     )
 
