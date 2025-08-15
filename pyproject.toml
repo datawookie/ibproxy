@@ -1,0 +1,13 @@
+[project]
+name = "ibkr-proxy"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ibkr-oauth-flow",
+    "ruff>=0.12.9",
+]
+
+[tool.uv.sources]
+ibkr-oauth-flow = { git = "https://github.com/datawookie/ibkr-oauth-flow" }
