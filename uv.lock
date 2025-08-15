@@ -272,6 +272,7 @@ name = "ibkr-proxy"
 version = "0.0.1"
 source = { editable = "." }
 dependencies = [
+    { name = "bump2version" },
     { name = "fastapi" },
     { name = "ibkr-oauth-flow" },
     { name = "ruff" },
@@ -286,6 +287,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "bump2version", specifier = ">=1.0.1" },
     { name = "fastapi", specifier = ">=0.116.1" },
     { name = "ibkr-oauth-flow", editable = "../ibkr-oauth-flow" },
     { name = "ruff", specifier = ">=0.12.9" },

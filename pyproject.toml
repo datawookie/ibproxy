@@ -10,6 +10,7 @@ dependencies = [
     "ruff>=0.12.9",
     "uvicorn>=0.35.0",
     "ibkr-oauth-flow @ git+https://github.com/datawookie/ibkr-oauth-flow@master",
+    "bump2version>=1.0.1",
 ]
 
 [dependency-groups]
