@@ -238,7 +238,7 @@ wheels = [
 
 [[package]]
 name = "ibkr-oauth-flow"
-version = "0.1.0"
+version = "0.0.2"
 source = { editable = "../ibkr-oauth-flow" }
 dependencies = [
     { name = "bump2version" },
@@ -275,6 +275,7 @@ dependencies = [
     { name = "bump2version" },
     { name = "fastapi" },
     { name = "ibkr-oauth-flow" },
+    { name = "pre-commit" },
     { name = "ruff" },
     { name = "uvicorn" },
 ]
@@ -290,6 +291,7 @@ requires-dist = [
     { name = "bump2version", specifier = ">=1.0.1" },
     { name = "fastapi", specifier = ">=0.116.1" },
     { name = "ibkr-oauth-flow", editable = "../ibkr-oauth-flow" },
+    { name = "pre-commit", specifier = ">=4.3.0" },
     { name = "ruff", specifier = ">=0.12.9" },
     { name = "uvicorn", specifier = ">=0.35.0" },
 ]

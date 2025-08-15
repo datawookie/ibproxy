@@ -6,14 +6,23 @@ from logging.handlers import TimedRotatingFileHandler
 
 
 class CustomTimedRotatingFileHandler(TimedRotatingFileHandler):
-    def __init__(self, filename, when="H", interval=1, backupCount=0, encoding="utf-8", delay=False, utc=False):
+    def __init__(
+        self,
+        filename: str,
+        when: str = "H",
+        interval: int = 1,
+        backupCount: int = 0,
+        encoding: str = "utf-8",
+        delay: bool = False,
+        utc: bool = False,
+    ) -> None:
         super().__init__(filename, when, interval, backupCount, encoding, delay, utc)
 
         self.suffix = "%Y%m%d-%H%M"
         self.prefix = os.path.splitext(self.baseFilename)[0]
         self.ext = "log"
 
-    def rotation_filename(self, default_name):
+    def rotation_filename(self, default_name: str) -> str:
         """
         Generates replacement filename used when current log file is rotated.
 
@@ -23,7 +32,7 @@ class CustomTimedRotatingFileHandler(TimedRotatingFileHandler):
 
         return f"{self.prefix}-{dtime}.{self.ext}"
 
-    def getFilesToDelete(self):
+    def getFilesToDelete(self) -> list[str]:
         """
         Which files are to be deleted?
 

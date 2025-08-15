@@ -11,6 +11,7 @@ dependencies = [
     "uvicorn>=0.35.0",
     "ibkr-oauth-flow @ git+https://github.com/datawookie/ibkr-oauth-flow@master",
     "bump2version>=1.0.1",
+    "pre-commit>=4.3.0",
 ]
 
 [dependency-groups]
@@ -28,3 +29,16 @@ ibkr-oauth-flow = { path = "../ibkr-oauth-flow", editable = true }
 
 [project.scripts]
 ibkr-proxy = "proxy.main:main"
+
+[tool.mypy]
+ignore_missing_imports = false
+
+[[tool.mypy.overrides]]
+module = ["yaml"]
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["I", "F"]
