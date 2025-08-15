@@ -1,0 +1,34 @@
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  default:
+    format: "%(asctime)s [%(levelname)8s] %(message)s"
+    datefmt: "%Y-%m-%d %H:%M:%S"
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: NOTSET
+    formatter: default
+    stream: ext://sys.stdout
+  file:
+    class: proxy.logging.handlers.CustomTimedRotatingFileHandler
+    level: NOTSET
+    formatter: default
+    when: "H"
+    interval: 1
+    backupCount: 48
+    filename: proxy.log
+
+root:
+  level: INFO
+  handlers: [console, file]
+
+loggers:
+  botocore:   {level: WARNING}
+  httpx:      {level: WARNING}
+  smart_open: {level: WARNING}
+  asyncio:    {level: WARNING}
+  httpcore:   {level: WARNING}
+  urllib3:    {level: WARNING}

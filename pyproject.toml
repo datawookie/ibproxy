@@ -1,13 +1,29 @@
 [project]
 name = "ibkr-proxy"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.0.1"
+description = "A proxy service for the IBKR API"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi>=0.116.1",
     "ibkr-oauth-flow",
     "ruff>=0.12.9",
+    "uvicorn>=0.35.0",
+    "ibkr-oauth-flow @ git+https://github.com/datawookie/ibkr-oauth-flow@master",
 ]
 
+[dependency-groups]
+dev = [
+    "ibkr-oauth-flow",
+    "ruff>=0.12.7",
+]
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
 [tool.uv.sources]
-ibkr-oauth-flow = { git = "https://github.com/datawookie/ibkr-oauth-flow" }
+ibkr-oauth-flow = { path = "../ibkr-oauth-flow", editable = true }
+
+[project.scripts]
+ibkr-proxy = "proxy.main:main"
