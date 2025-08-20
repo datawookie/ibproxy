@@ -5,9 +5,11 @@ import logging.config
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Optional
 from urllib.parse import urljoin
 
 import httpx
+import ibauth
 import uvicorn
 import yaml
 from curlify2 import Curlify
@@ -26,7 +28,7 @@ with open(LOGGING_CONFIG_PATH) as f:
 
 # These are initialised in main().
 #
-auth = None
+auth: Optional[ibauth.Auth] = None
 tickle_task = None
 
 # Seconds between tickling the IBKR API.
@@ -50,17 +52,14 @@ async def tickle_loop() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    global tickle_task
+    tickle_task = asyncio.create_task(tickle_loop())
     yield
-
-
-#     global tickle_task
-#     tickle_task = asyncio.create_task(tickle_loop())
-#     yield
-#     tickle_task.cancel()
-#     try:
-#         await tickle_task
-#     except asyncio.CancelledError:
-#         pass
+    tickle_task.cancel()
+    try:
+        await tickle_task
+    except asyncio.CancelledError:
+        pass
 
 
 # ==============================================================================
@@ -68,8 +67,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="IBKR Proxy Service", version=VERSION, lifespan=lifespan)
 
 
-@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
-async def proxy(path: str, request: Request):
+@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])  # type: ignore[misc]
+async def proxy(path: str, request: Request) -> Response:
     logging.info("🔵 Received request.")
     method = request.method
     url = urljoin(EXTERNAL_API_BASE, path)
@@ -96,6 +95,8 @@ async def proxy(path: str, request: Request):
             logging.debug("- Params:")
             for k, v in params.items():
                 logging.debug(f"  - {k}: {v}")
+
+        headers["Authorization"] = f"Bearer {auth.bearer_token}"  # type: ignore[union-attr]
 
         # Forward request.
         async with httpx.AsyncClient() as client:
@@ -138,13 +139,15 @@ def main() -> None:
 
     logging.config.dictConfig(LOGGING_CONFIG)
 
-    # auth = ibkr_oauth_flow.auth_from_yaml("config.yaml")
+    auth = ibauth.auth_from_yaml("config.yaml")
 
-    # auth.get_access_token()
-    # auth.get_bearer_token()
+    auth.get_access_token()
+    auth.get_bearer_token()
 
-    # auth.ssodh_init()
-    # auth.validate_sso()
+    auth.ssodh_init()
+    auth.validate_sso()
+
+    print(auth.bearer_token)
 
     uvicorn.run(
         "proxy.main:app",
@@ -156,18 +159,12 @@ def main() -> None:
         # This is because we can only have a single connection to the IBKR API.
         #
         workers=1,
-        # TODO: Set this to False!
-        # TODO: Set this to False!
-        # TODO: Set this to False!
-        # TODO: Set this to False!
-        # TODO: Set this to False!
-        # TODO: Set this to False!
-        reload=True,
+        reload=False,
         #
         log_config=LOGGING_CONFIG,
     )
 
-    # auth.logout()
+    auth.logout()
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -5,4 +5,4 @@ API_PORT = 9000
 
 EXTERNAL_API_BASE = "https://1.api.ibkr.com/"
 
-HEADERS = {}
+HEADERS: dict[str, str] = {}
