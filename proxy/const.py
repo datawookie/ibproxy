@@ -3,6 +3,4 @@ VERSION = "0.0.2"
 API_HOST = "0.0.0.0"
 API_PORT = 9000
 
-EXTERNAL_API_BASE = "https://1.api.ibkr.com/"
-
 HEADERS: dict[str, str] = {}

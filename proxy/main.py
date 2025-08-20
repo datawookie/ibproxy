@@ -18,7 +18,7 @@ from curlify2 import Curlify
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 
-from .const import API_HOST, API_PORT, EXTERNAL_API_BASE, HEADERS, VERSION
+from .const import API_HOST, API_PORT, HEADERS, VERSION
 from .util import logging_level
 
 LOGGING_CONFIG_PATH = Path(__file__).parent / "logging" / "logging.yaml"
@@ -73,7 +73,7 @@ app = FastAPI(title="IBKR Proxy Service", version=VERSION, lifespan=lifespan)
 async def proxy(path: str, request: Request) -> Response:
     logging.info("🔵 Received request.")
     method = request.method
-    url = urljoin(EXTERNAL_API_BASE, path)
+    url = urljoin(f"https://{auth.domain}/", path)  # type: ignore[union-attr]
     logging.debug(f"- Method:  {method}")
     logging.debug(f"- URL:     {url}")
 
