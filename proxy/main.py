@@ -1,9 +1,11 @@
 import argparse
 import asyncio
+import json
 import logging
 import logging.config
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urljoin
@@ -104,7 +106,8 @@ async def proxy(path: str, request: Request) -> Response:
                 method=method, url=url, content=body, headers={**headers, **HEADERS}, params=params, timeout=30.0
             )
 
-        logging.debug("- " + Curlify(response.request).to_curl())
+        curl = Curlify(response.request).to_curl()
+        logging.debug("- " + curl)
 
         headers = dict(response.headers)
         # Remove headers from response. These will be replaced with correct values.
@@ -112,10 +115,20 @@ async def proxy(path: str, request: Request) -> Response:
         headers.pop("content-encoding", None)
 
         logging.info("✅ Return response.")
-        print("=====================================================================")
-        print(response.content)
-        print(response.headers)
-        print("=====================================================================")
+
+        now = datetime.now()
+        filename = now.strftime("%Y%m%d-%H%M%S:%f.json")
+
+        dump = {
+            "request": {
+                "curl": curl,
+            },
+            "response": response.json(),
+        }
+
+        logging.info(f"Dumping request/response to {filename}.")
+        json.dump(dump, open(filename, "w"), indent=2)
+
         return Response(
             content=response.content,
             status_code=response.status_code,
@@ -146,8 +159,6 @@ def main() -> None:
 
     auth.ssodh_init()
     auth.validate_sso()
-
-    print(auth.bearer_token)
 
     uvicorn.run(
         "proxy.main:app",
