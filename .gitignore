@@ -1,5 +1,6 @@
 privatekey.pem
 config.yaml
-ibkr_proxy.egg-info/
 __pycache__
 *.log
+*.code-workspace
+ibproxy.egg-info/

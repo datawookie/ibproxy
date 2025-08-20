@@ -1,34 +1,34 @@
 [project]
-name = "ibkr-proxy"
+name = "ibproxy"
 version = "0.0.2"
-description = "A proxy service for the IBKR API"
+description = "A proxy service for the Interactive Brokers API"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.116.1",
-    "ibkr-oauth-flow",
     "ruff>=0.12.9",
     "uvicorn>=0.35.0",
-    "ibkr-oauth-flow @ git+https://github.com/datawookie/ibkr-oauth-flow@master",
+    "ibauth>=0.0.4",
     "bump2version>=1.0.1",
     "pre-commit>=4.3.0",
+    "httpx>=0.28.1",
+    "curlify2>=2.0.0",
 ]
 
 [dependency-groups]
 dev = [
-    "ibkr-oauth-flow",
     "ruff>=0.12.7",
+]
+test = [
+    "pytest",
 ]
 
 [build-system]
 requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
-[tool.uv.sources]
-ibkr-oauth-flow = { path = "../ibkr-oauth-flow", editable = true }
-
 [project.scripts]
-ibkr-proxy = "proxy.main:main"
+ibproxy = "proxy.main:main"
 
 [tool.mypy]
 ignore_missing_imports = false

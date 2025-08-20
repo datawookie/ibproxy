@@ -5,13 +5,17 @@ import logging.config
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import urljoin
 
-import ibkr_oauth_flow
+import httpx
 import uvicorn
 import yaml
-from fastapi import FastAPI
+from curlify2 import Curlify
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse, Response
 
-from .const import API_HOST, API_PORT, VERSION
+from .const import API_HOST, API_PORT, EXTERNAL_API_BASE, HEADERS, VERSION
+from .util import logging_level
 
 LOGGING_CONFIG_PATH = Path(__file__).parent / "logging" / "logging.yaml"
 
@@ -46,19 +50,80 @@ async def tickle_loop() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    global tickle_task
-    tickle_task = asyncio.create_task(tickle_loop())
     yield
-    tickle_task.cancel()
-    try:
-        await tickle_task
-    except asyncio.CancelledError:
-        pass
+
+
+#     global tickle_task
+#     tickle_task = asyncio.create_task(tickle_loop())
+#     yield
+#     tickle_task.cancel()
+#     try:
+#         await tickle_task
+#     except asyncio.CancelledError:
+#         pass
 
 
 # ==============================================================================
 
 app = FastAPI(title="IBKR Proxy Service", version=VERSION, lifespan=lifespan)
+
+
+@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+async def proxy(path: str, request: Request):
+    logging.info("🔵 Received request.")
+    method = request.method
+    url = urljoin(EXTERNAL_API_BASE, path)
+    logging.debug(f"- Method:  {method}")
+    logging.debug(f"- URL:     {url}")
+
+    try:
+        # Get body, parameters and headers from request.
+        body = await request.body()
+        params = dict(request.query_params)
+        headers = dict(request.headers)
+
+        # Remove host header because this will reference the proxy rather than
+        # the target site.
+        #
+        headers.pop("host")
+
+        if body:
+            logging.debug(f"- Body:    {body}")
+        if logging_level() <= logging.DEBUG:
+            logging.debug("- Headers:")
+            for k, v in headers.items():
+                logging.debug(f"  - {k}: {v}")
+            logging.debug("- Params:")
+            for k, v in params.items():
+                logging.debug(f"  - {k}: {v}")
+
+        # Forward request.
+        async with httpx.AsyncClient() as client:
+            response = await client.request(
+                method=method, url=url, content=body, headers={**headers, **HEADERS}, params=params, timeout=30.0
+            )
+
+        logging.debug("- " + Curlify(response.request).to_curl())
+
+        headers = dict(response.headers)
+        # Remove headers from response. These will be replaced with correct values.
+        headers.pop("content-length", None)
+        headers.pop("content-encoding", None)
+
+        logging.info("✅ Return response.")
+        print("=====================================================================")
+        print(response.content)
+        print(response.headers)
+        print("=====================================================================")
+        return Response(
+            content=response.content,
+            status_code=response.status_code,
+            headers=headers,
+            media_type=headers.get("content-type", "application/json"),
+        )
+
+    except httpx.RequestError as e:
+        return JSONResponse(status_code=502, content={"error": f"Proxy error: {str(e)}"})
 
 
 def main() -> None:
@@ -73,13 +138,13 @@ def main() -> None:
 
     logging.config.dictConfig(LOGGING_CONFIG)
 
-    auth = ibkr_oauth_flow.auth_from_yaml("config.yaml")
+    # auth = ibkr_oauth_flow.auth_from_yaml("config.yaml")
 
-    auth.get_access_token()
-    auth.get_bearer_token()
+    # auth.get_access_token()
+    # auth.get_bearer_token()
 
-    auth.ssodh_init()
-    auth.validate_sso()
+    # auth.ssodh_init()
+    # auth.validate_sso()
 
     uvicorn.run(
         "proxy.main:app",
@@ -91,12 +156,18 @@ def main() -> None:
         # This is because we can only have a single connection to the IBKR API.
         #
         workers=1,
-        reload=False,
+        # TODO: Set this to False!
+        # TODO: Set this to False!
+        # TODO: Set this to False!
+        # TODO: Set this to False!
+        # TODO: Set this to False!
+        # TODO: Set this to False!
+        reload=True,
         #
         log_config=LOGGING_CONFIG,
     )
 
-    auth.logout()
+    # auth.logout()
 
 
 if __name__ == "__main__":  # pragma: no cover
