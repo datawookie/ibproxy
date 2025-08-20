@@ -15,7 +15,7 @@ if __name__ == "__main__":
 
     account_id = "DUH638336"
 
-    # VIA PROXY ================================================================
+    # ==========================================================================
 
     url = f"http://127.0.0.1:9000/v1/api/portfolio/{account_id}/summary"
 
@@ -25,5 +25,16 @@ if __name__ == "__main__":
     data = response.json()
 
     print(json.dumps(data["accountcode"], indent=2))
+
+    # ==========================================================================
+
+    url = "http://127.0.0.1:9000/v1/api/iserver/accounts"
+
+    response = httpx.get(url, headers=headers, verify=False)
+    response.raise_for_status()
+
+    data = response.json()
+
+    print(json.dumps(data, indent=2))
 
     # ==========================================================================
