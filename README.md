@@ -12,7 +12,7 @@ the IBKR OAuth service:
 
 ```bash
 uv sync
-uv run ibkr-proxy --debug
+uv run ibproxy --debug
 ```
 
 You can access the Swagger interface at http://127.0.0.1:9000/docs.

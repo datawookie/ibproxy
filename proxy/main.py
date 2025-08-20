@@ -28,7 +28,7 @@ with open(LOGGING_CONFIG_PATH) as f:
 
 # These are initialised in main().
 #
-auth: Optional[ibauth.Auth] = None
+auth: Optional[ibauth.IBKROAuthFlow] = None
 tickle_task = None
 
 # Seconds between tickling the IBKR API.
