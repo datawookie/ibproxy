@@ -5,7 +5,6 @@ import logging
 import logging.config
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urljoin
@@ -75,7 +74,7 @@ app = FastAPI(title="IBKR Proxy Service", version=VERSION, lifespan=lifespan)
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])  # type: ignore[misc]
 async def proxy(path: str, request: Request) -> Response:
     logging.info("🔵 Received request.")
-    rate.record()
+    now = rate.record(path)
 
     method = request.method
     url = urljoin(f"https://{auth.domain}/", path)  # type: ignore[union-attr]
@@ -111,32 +110,28 @@ async def proxy(path: str, request: Request) -> Response:
                 method=method, url=url, content=body, headers={**headers, **HEADERS}, params=params, timeout=30.0
             )
 
-        curl = Curlify(response.request).to_curl()
-        logging.debug("- " + curl)
-
         headers = dict(response.headers)
         # Remove headers from response. These will be replaced with correct values.
         headers.pop("content-length", None)
         headers.pop("content-encoding", None)
 
-        logging.info("✅ Return response.")
+        with open(filename := now.strftime("%Y%m%d-%H%M%S:%f.json"), "w") as f:
+            logging.info(f"💾 Dump: {filename}.")
+            dump = {
+                "request": {
+                    "curl": Curlify(response.request).to_curl(),
+                },
+                "response": response.json(),
+            }
+            json.dump(dump, f, indent=2)
 
-        now = datetime.now()
-        filename = now.strftime("%Y%m%d-%H%M%S:%f.json")
-
-        dump = {
-            "request": {
-                "curl": curl,
-            },
-            "response": response.json(),
-        }
-
-        logging.info(f"Dumping request/response to {filename}.")
-        json.dump(dump, open(filename, "w"), indent=2)
-
+        logging.info(f"⌚ Rates (last {rate.WINDOW} s):")
+        rps = rate.rate(path)
+        logging.info(f"  - {rps:5.2f} Hz | {path}")
         rps = rate.rate()
-        logging.info(f"⌚ Rate: {rps:.2f} Hz (last {rate.WINDOW} s).")
+        logging.info(f"  - {rps:5.2f} Hz | (global)")
 
+        logging.info("✅ Return response.")
         return Response(
             content=response.content,
             status_code=response.status_code,
