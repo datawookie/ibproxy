@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 
 import httpx
 
@@ -28,13 +29,25 @@ if __name__ == "__main__":
 
     # ==========================================================================
 
-    url = "http://127.0.0.1:9000/v1/api/iserver/accounts"
+    url = f"http://127.0.0.1:9000/v1/api/portfolio/{account_id}/allocation"
 
-    response = httpx.get(url, headers=headers, verify=False)
-    response.raise_for_status()
+    for _ in range(3):
+        response = httpx.get(url, headers=headers, verify=False)
+        response.raise_for_status()
 
-    data = response.json()
+        time.sleep(0.5)
 
-    print(json.dumps(data, indent=2))
+    # ==========================================================================
+
+    # This has a slower rate limit. If it is called too frequently, it will be rate limited.
+
+    # url = "http://127.0.0.1:9000/v1/api/iserver/accounts"
+
+    # response = httpx.get(url, headers=headers, verify=False)
+    # response.raise_for_status()
+
+    # data = response.json()
+
+    # print(json.dumps(data, indent=2))
 
     # ==========================================================================
