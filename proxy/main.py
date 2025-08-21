@@ -18,6 +18,7 @@ from curlify2 import Curlify
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 
+from . import rate
 from .const import API_HOST, API_PORT, HEADERS, VERSION
 from .util import logging_level
 
@@ -26,12 +27,14 @@ LOGGING_CONFIG_PATH = Path(__file__).parent / "logging" / "logging.yaml"
 with open(LOGGING_CONFIG_PATH) as f:
     LOGGING_CONFIG = yaml.safe_load(f)
 
-# TICKLE LOOP ==================================================================
+# GLOBALS ======================================================================
 
 # These are initialised in main().
 #
 auth: Optional[ibauth.IBKROAuthFlow] = None
-tickle_task = None
+tickle = None
+
+# TICKLE LOOP ==================================================================
 
 # Seconds between tickling the IBKR API.
 #
@@ -54,12 +57,12 @@ async def tickle_loop() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    global tickle_task
-    tickle_task = asyncio.create_task(tickle_loop())
+    global tickle
+    tickle = asyncio.create_task(tickle_loop())
     yield
-    tickle_task.cancel()
+    tickle.cancel()
     try:
-        await tickle_task
+        await tickle
     except asyncio.CancelledError:
         pass
 
@@ -72,6 +75,8 @@ app = FastAPI(title="IBKR Proxy Service", version=VERSION, lifespan=lifespan)
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])  # type: ignore[misc]
 async def proxy(path: str, request: Request) -> Response:
     logging.info("🔵 Received request.")
+    rate.record()
+
     method = request.method
     url = urljoin(f"https://{auth.domain}/", path)  # type: ignore[union-attr]
     logging.debug(f"- Method:  {method}")
@@ -128,6 +133,9 @@ async def proxy(path: str, request: Request) -> Response:
 
         logging.info(f"Dumping request/response to {filename}.")
         json.dump(dump, open(filename, "w"), indent=2)
+
+        rps = rate.rate()
+        logging.info(f"⌚ Rate: {rps:.2f} Hz (last {rate.WINDOW} s).")
 
         return Response(
             content=response.content,
