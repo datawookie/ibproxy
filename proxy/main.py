@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import bz2
 import json
 import logging
 import logging.config
@@ -18,6 +19,7 @@ from fastapi.responses import JSONResponse, Response
 
 from . import rate
 from .const import API_HOST, API_PORT, HEADERS, JOURNAL_DIR, VERSION
+from .timing import timing
 from .util import logging_level
 
 LOGGING_CONFIG_PATH = Path(__file__).parent / "logging" / "logging.yaml"
@@ -73,7 +75,6 @@ app = FastAPI(title="IBKR Proxy Service", version=VERSION, lifespan=lifespan)
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])  # type: ignore[misc]
 async def proxy(path: str, request: Request) -> Response:
     logging.info("🔵 Received request.")
-    now = rate.record(path)
 
     method = request.method
     url = urljoin(f"https://{auth.domain}/", path)  # type: ignore[union-attr]
@@ -105,17 +106,30 @@ async def proxy(path: str, request: Request) -> Response:
 
         # Forward request.
         async with httpx.AsyncClient() as client:
-            response = await client.request(
-                method=method, url=url, content=body, headers={**headers, **HEADERS}, params=params, timeout=30.0
-            )
+            now = rate.record(path)
+            with timing() as duration:
+                response = await client.request(
+                    method=method, url=url, content=body, headers={**headers, **HEADERS}, params=params, timeout=30.0
+                )
             response.raise_for_status()
+            logging.info(f"⏳ Duration: {duration.duration:.3f} s")
 
         headers = dict(response.headers)
         # Remove headers from response. These will be replaced with correct values.
         headers.pop("content-length", None)
         headers.pop("content-encoding", None)
 
-        with open(JOURNAL_DIR / (filename := now.strftime("%Y%m%d-%H%M%S:%f.json")), "w") as f:
+        logging.info(f"⌚ Rates (last {rate.WINDOW} s):")
+        rps, period = rate.rate(path)
+        logging.info(f"  - {rate.format(rps)} Hz / {rate.format(period)} s | {path}")
+        rps, period = rate.rate()
+        logging.info(f"  - {rate.format(rps)} Hz / {rate.format(period)} s | (global)")
+
+        json_path = JOURNAL_DIR / (filename := now.strftime("%Y%m%d/%Y%m%d-%H%M%S:%f.json.bz2"))
+        #
+        json_path.parent.mkdir(parents=True, exist_ok=True)
+        #
+        with bz2.open(json_path, "wt", encoding="utf-8") as f:
             logging.info(f"💾 Dump: {filename}.")
             dump = {
                 "request": {
@@ -125,14 +139,9 @@ async def proxy(path: str, request: Request) -> Response:
                     "body": json.loads(body.decode("utf-8")) if body else None,
                 },
                 "response": response.json(),
+                "duration": duration.duration,
             }
             json.dump(dump, f, indent=2)
-
-        logging.info(f"⌚ Rates (last {rate.WINDOW} s):")
-        rps, period = rate.rate(path)
-        logging.info(f"  - {rate.format(rps)} Hz / {rate.format(period)} s | {path}")
-        rps, period = rate.rate()
-        logging.info(f"  - {rate.format(rps)} Hz / {rate.format(period)} s | (global)")
 
         logging.info("✅ Return response.")
         return Response(

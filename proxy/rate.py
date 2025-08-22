@@ -55,7 +55,7 @@ def rate(endpoint: str | None = None) -> tuple[float | None, float | None]:
             # Sort because they are not out of order.
             dq.sort()
         else:
-            dq = times.get(endpoint)  # type: ignore[assignment]
+            dq = times[endpoint]  # type: ignore[assignment]
 
         n = len(dq)
 
