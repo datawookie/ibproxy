@@ -7,6 +7,10 @@ times: dict[str, deque[float]] = defaultdict(deque)
 
 lock = Lock()
 
+# Sliding window in seconds.
+#
+# This is the time interval that's used to calculate the rates.
+#
 WINDOW = 5
 
 # IBKR rate limits are documented at https://www.interactivebrokers.com/campus/ibkr-api-page/web-api-trading/#pacing-limitations-8.
@@ -32,9 +36,14 @@ def record(endpoint: str) -> datetime:
     return datetime.fromtimestamp(now, tz=UTC)
 
 
-def rate(endpoint: str | None = None) -> float:
+def rate(endpoint: str | None = None) -> tuple[float | None, float | None]:
     """
     Compute sliding-window average requests per second.
+
+    It also returns the inverse of this frequency. This is similar to (but not
+    the same as) the average period between requests. Calculating that correctly
+    would require a bit more work and since this is possibly being done
+    frequently it's probably not worth the extra time.
 
     Args:
         endpoint (str | None): The API endpoint to compute the rate for. If None, computes the overall rate.
@@ -51,8 +60,21 @@ def rate(endpoint: str | None = None) -> float:
         n = len(dq)
 
         if not dq or n < 2:
-            return 0.0
+            elapsed = 0.0
+        else:
+            elapsed = dq[-1] - dq[0]
 
-        elapsed = dq[-1] - dq[0]
+        rate = n / elapsed if elapsed > 0 else None
+        period = 1 / rate if rate is not None else None
 
-        return n / elapsed if elapsed > 0 else 0.0
+        return rate, period
+
+
+def format(rate: float | None) -> str:
+    """
+    Format a rate value for logging.
+
+    Args:
+        rate (float | None): The rate to format.
+    """
+    return f"{rate:5.2f}" if rate is not None else "-----"

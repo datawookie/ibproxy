@@ -127,10 +127,10 @@ async def proxy(path: str, request: Request) -> Response:
             json.dump(dump, f, indent=2)
 
         logging.info(f"⌚ Rates (last {rate.WINDOW} s):")
-        rps = rate.rate(path)
-        logging.info(f"  - {rps:5.2f} Hz | {path}")
-        rps = rate.rate()
-        logging.info(f"  - {rps:5.2f} Hz | (global)")
+        rps, period = rate.rate(path)
+        logging.info(f"  - {rate.format(rps)} Hz / {rate.format(period)} s | {path}")
+        rps, period = rate.rate()
+        logging.info(f"  - {rate.format(rps)} Hz / {rate.format(period)} s | (global)")
 
         logging.info("✅ Return response.")
         return Response(

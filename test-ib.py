@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
     url = f"http://127.0.0.1:9000/v1/api/portfolio/{account_id}/summary"
 
-    response = httpx.get(url, headers=headers, verify=False)
+    response = httpx.get(url, headers=headers, verify=False, timeout=5)
     response.raise_for_status()
 
     data = response.json()
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     url = f"http://127.0.0.1:9000/v1/api/portfolio/{account_id}/allocation"
 
     for _ in range(3):
-        response = httpx.get(url, headers=headers, verify=False)
+        response = httpx.get(url, headers=headers, verify=False, timeout=5)
         response.raise_for_status()
 
         time.sleep(0.5)
