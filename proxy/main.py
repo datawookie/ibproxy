@@ -13,7 +13,6 @@ import httpx
 import ibauth
 import uvicorn
 import yaml
-from curlify2 import Curlify
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 
@@ -120,7 +119,10 @@ async def proxy(path: str, request: Request) -> Response:
             logging.info(f"💾 Dump: {filename}.")
             dump = {
                 "request": {
-                    "curl": Curlify(response.request).to_curl(),
+                    "url": url,
+                    "method": method,
+                    "headers": headers,
+                    "body": json.loads(body.decode("utf-8")) if body else None,
                 },
                 "response": response.json(),
             }
