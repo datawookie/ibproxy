@@ -8,6 +8,8 @@ the IBKR OAuth service:
 - `config.yaml` and
 - `privatekey.pem`.
 
+See the `README` for the `ibauth` project for documentation of the `config.yaml` content.
+
 ## Development
 
 ```bash

@@ -5,3 +5,4 @@ __pycache__
 *.code-workspace
 ibproxy.egg-info/
 *.json
+journal

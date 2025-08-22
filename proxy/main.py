@@ -18,7 +18,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 
 from . import rate
-from .const import API_HOST, API_PORT, HEADERS, VERSION
+from .const import API_HOST, API_PORT, HEADERS, JOURNAL_DIR, VERSION
 from .util import logging_level
 
 LOGGING_CONFIG_PATH = Path(__file__).parent / "logging" / "logging.yaml"
@@ -109,13 +109,14 @@ async def proxy(path: str, request: Request) -> Response:
             response = await client.request(
                 method=method, url=url, content=body, headers={**headers, **HEADERS}, params=params, timeout=30.0
             )
+            response.raise_for_status()
 
         headers = dict(response.headers)
         # Remove headers from response. These will be replaced with correct values.
         headers.pop("content-length", None)
         headers.pop("content-encoding", None)
 
-        with open(filename := now.strftime("%Y%m%d-%H%M%S:%f.json"), "w") as f:
+        with open(JOURNAL_DIR / (filename := now.strftime("%Y%m%d-%H%M%S:%f.json")), "w") as f:
             logging.info(f"💾 Dump: {filename}.")
             dump = {
                 "request": {
