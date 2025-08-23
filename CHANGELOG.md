@@ -1,5 +1,11 @@
 # Change Log
 
+## [0.0.5] - 2025-08-23
+
+- Improve test coverage to 86.9%.
+- Add /health endpoint.
+- Neaten logging.
+
 ## [0.0.4] - 2025-08-22
 
 - Request and response data dumped as compressed JSON under `journal/`.
