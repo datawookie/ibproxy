@@ -12,6 +12,7 @@ dependencies = [
     "pre-commit>=4.3.0",
     "httpx>=0.28.1",
     "curlify2>=2.0.0",
+    "tenacity>=9.1.2",
 ]
 
 [dependency-groups]
@@ -21,6 +22,7 @@ dev = [
 ]
 test = [
     "pytest>=8.3.5",
+    "pytest-asyncio>=1.1.0",
     "pytest-cov>=6.1.1",
     "pytest-socket>=0.7.0",
     "pytest-timeout>=2.4.0",
@@ -43,9 +45,9 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = ["--timeout=5", "--disable-socket", "--allow-hosts=localhost", "--allow-unix-socket"]
-filterwarnings = [
-    "ignore::DeprecationWarning:smart_open.smart_open_lib",
-    "ignore::DeprecationWarning:botocore.auth",
+markers = [
+  "integration: Tests that require a running ibproxy.",
+  "seldom: Tests that hit endpoints that have a slow rate limit.",
 ]
 
 [tool.ruff]
@@ -61,6 +63,10 @@ where = ["src"]
 default-groups = ["dev", "test"]
 
 [tool.coverage.report]
+include = ["src/*"]
 show_missing = true
 skip_covered = true
 precision = 1
+
+[tool.coverage.run]
+source = ["src"]

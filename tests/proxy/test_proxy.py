@@ -1,11 +1,9 @@
-# tests/test_proxy.py
 import bz2
 import json
 from datetime import datetime, timezone
 from typing import Any, Dict
 
 import pytest
-from fastapi.testclient import TestClient
 
 import proxy.main as appmod
 import proxy.rate as ratemod
@@ -32,16 +30,6 @@ def _clean_rate_and_auth(monkeypatch):
     monkeypatch.setattr(appmod, "auth", _MockAuth())
     yield
     ratemod.times.clear()
-
-
-@pytest.fixture
-def client(monkeypatch) -> TestClient:
-    # Avoid the real tickle loop doing anything noisy
-    async def _noop_loop():
-        return
-
-    monkeypatch.setattr(appmod, "tickle_loop", _noop_loop)
-    return TestClient(appmod.app)
 
 
 def _make_mock_httpx(
