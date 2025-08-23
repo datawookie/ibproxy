@@ -74,12 +74,9 @@ app = FastAPI(title="IBKR Proxy Service", version=VERSION, lifespan=lifespan)
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])  # type: ignore[misc]
 async def proxy(path: str, request: Request) -> Response:
-    logging.info("🔵 Received request.")
-
     method = request.method
     url = urljoin(f"https://{auth.domain}/", path)  # type: ignore[union-attr]
-    logging.debug(f"- Method:  {method}")
-    logging.debug(f"- URL:     {url}")
+    logging.info(f"🔵 Request: {method} {url}")
 
     try:
         # Get body, parameters and headers from request.
