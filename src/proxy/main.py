@@ -27,6 +27,14 @@ LOGGING_CONFIG_PATH = Path(__file__).parent / "logging" / "logging.yaml"
 with open(LOGGING_CONFIG_PATH) as f:
     LOGGING_CONFIG = yaml.safe_load(f)
 
+import warnings
+
+warnings.filterwarnings(
+    "ignore",
+    message="Duplicate Operation ID.*",
+    module="fastapi.openapi.utils",
+)
+
 # GLOBALS ======================================================================
 
 # These are initialised in main().
@@ -70,6 +78,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 # ==============================================================================
 
 app = FastAPI(title="IBKR Proxy Service", version=VERSION, lifespan=lifespan)
+
+
+@app.get("/health", tags=["system"])  # type: ignore[misc]
+async def health() -> dict[str, str]:
+    if auth is not None and getattr(auth, "bearer_token", None):
+        return {"status": "ok"}
+    return {"status": "degraded"}
 
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])  # type: ignore[misc]
