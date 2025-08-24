@@ -188,7 +188,7 @@ def main() -> None:
     auth.validate_sso()
 
     uvicorn.run(
-        "proxy.main:app",
+        "ibproxy.main:app",
         host=API_HOST,
         port=API_PORT,
         #

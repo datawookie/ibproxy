@@ -1,7 +1,10 @@
+from types import SimpleNamespace
+
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-import proxy.main as appmod
+import ibproxy.main as appmod
 
 
 @pytest.fixture
@@ -12,3 +15,19 @@ def client(monkeypatch) -> TestClient:
 
     monkeypatch.setattr(appmod, "tickle_loop", _noop_loop)
     return TestClient(appmod.app)
+
+
+@pytest.fixture
+def dummy_response() -> httpx.Response:
+    return httpx.Response(
+        200,
+        request=httpx.Request("GET", "https://api.test/test"),
+        json={"ok": True},
+    )
+
+
+@pytest.fixture(autouse=True)
+def fake_auth(monkeypatch):
+    fake = SimpleNamespace(domain="api.test", bearer_token="token123")
+    monkeypatch.setattr("ibproxy.main.auth", fake)
+    return fake

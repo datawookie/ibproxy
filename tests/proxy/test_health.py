@@ -1,4 +1,4 @@
-import proxy.main as appmod
+import ibproxy.main as appmod
 
 
 def test_health_degraded(monkeypatch, client):

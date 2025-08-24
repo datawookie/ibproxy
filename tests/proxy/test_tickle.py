@@ -3,7 +3,7 @@ import logging
 
 import pytest
 
-import proxy.main as appmod
+import ibproxy.main as appmod
 
 
 class DummyAuthOK:
