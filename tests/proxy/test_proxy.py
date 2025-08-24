@@ -1,9 +1,11 @@
 import bz2
 import json
+import httpx
 from datetime import datetime, timezone
 from typing import Any, Dict
 
 import pytest
+from unittest.mock import Mock, patch
 
 import ibproxy.main as appmod
 import ibproxy.rate as ratemod
@@ -180,3 +182,49 @@ def test_timing_context_measures_time():
         pass
     assert isinstance(t.duration, float)
     assert t.duration >= 0.0
+
+def test_proxy_handles_request_error(client, monkeypatch):
+    # Patch AsyncClient.request to raise a RequestError
+    async def raise_request_error(*args, **kwargs):
+        raise httpx.RequestError("boom")
+
+    monkeypatch.setattr("ibproxy.main.httpx.AsyncClient.request", raise_request_error)
+
+    resp = client.get("/test")
+
+    assert resp.status_code == 502
+    assert resp.json() == {"error": "Proxy error: boom"}
+
+@patch("ibproxy.main.uvicorn.run")
+@patch("ibproxy.main.ibauth.auth_from_yaml")
+@patch("ibproxy.main.argparse.ArgumentParser.parse_args")
+def test_main_runs_with_auth_and_uvicorn(mock_parse_args, mock_auth_from_yaml, mock_uvicorn):
+    # Pretend --debug not passed
+    mock_parse_args.return_value = Mock(debug=False)
+
+    # Fake auth object with methods
+    fake_auth = Mock()
+    mock_auth_from_yaml.return_value = fake_auth
+
+    # Run main
+    appmod.main()
+
+    # Auth should be constructed from config.yaml
+    mock_auth_from_yaml.assert_called_once_with("config.yaml")
+
+    # Auth methods should be called in order
+    fake_auth.get_access_token.assert_called_once()
+    fake_auth.get_bearer_token.assert_called_once()
+    fake_auth.ssodh_init.assert_called_once()
+    fake_auth.validate_sso.assert_called_once()
+
+    # uvicorn should be launched with expected args
+    mock_uvicorn.assert_called_once()
+    args, kwargs = mock_uvicorn.call_args
+    assert kwargs["host"] == appmod.API_HOST
+    assert kwargs["port"] == appmod.API_PORT
+    assert kwargs["workers"] == 1
+    assert kwargs["reload"] is False
+
+    # logout should happen after uvicorn.run
+    fake_auth.logout.assert_called_once()

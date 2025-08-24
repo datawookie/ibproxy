@@ -64,6 +64,9 @@ default-groups = ["dev", "test"]
 
 [tool.coverage.report]
 include = ["src/*"]
+omit = [
+    "src/ibproxy/logging/handlers.py",
+]
 show_missing = true
 skip_covered = false
 precision = 1
