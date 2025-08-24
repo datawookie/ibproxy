@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.116.1",
     "uvicorn>=0.35.0",
-    "ibauth>=0.0.4",
+    "ibauth>=0.0.5",
     "bump2version>=1.0.1",
     "pre-commit>=4.3.0",
     "httpx>=0.28.1",
@@ -18,7 +18,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "mypy>=1.16.0",
-    "ruff>=0.12.9",
+    "ruff>=0.12.10",
 ]
 test = [
     "pytest>=8.3.5",
@@ -33,7 +33,7 @@ requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project.scripts]
-ibproxy = "proxy.main:main"
+ibproxy = "ibproxy.main:main"
 
 [tool.mypy]
 ignore_missing_imports = false
@@ -65,7 +65,7 @@ default-groups = ["dev", "test"]
 [tool.coverage.report]
 include = ["src/*"]
 show_missing = true
-skip_covered = true
+skip_covered = false
 precision = 1
 
 [tool.coverage.run]

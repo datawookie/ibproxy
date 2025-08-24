@@ -5,9 +5,9 @@ from typing import Any, Dict
 
 import pytest
 
-import proxy.main as appmod
-import proxy.rate as ratemod
-from proxy.timing import timing
+import ibproxy.main as appmod
+import ibproxy.rate as ratemod
+from ibproxy.timing import timing
 
 
 class _MockAuth:
