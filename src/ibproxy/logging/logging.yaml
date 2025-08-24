@@ -13,7 +13,7 @@ handlers:
     formatter: default
     stream: ext://sys.stdout
   file:
-    class: proxy.logging.handlers.CustomTimedRotatingFileHandler
+    class: ibproxy.logging.handlers.CustomTimedRotatingFileHandler
     level: NOTSET
     formatter: default
     when: "H"
