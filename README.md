@@ -1,5 +1,7 @@
 # IBKR Proxy
 
+[![codecov](https://codecov.io/gh/datawookie/ibproxy/branch/master/graph/badge.svg)](https://codecov.io/gh/datawookie/ibproxy)
+
 ```python
 import json
 import time
