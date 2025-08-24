@@ -175,7 +175,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.debug:
-        LOGGING_CONFIG["root"]["level"] = "DEBUG"
+        LOGGING_CONFIG["root"]["level"] = "DEBUG"  # pragma: no cover
 
     logging.config.dictConfig(LOGGING_CONFIG)
 
