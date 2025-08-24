@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.0.6] - 2025-08-24
+
+- Rename module from `proxy` to `ibproxy`.
+
 ## [0.0.5] - 2025-08-23
 
 - Improve test coverage to 86.9%.
