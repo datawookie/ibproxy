@@ -16,10 +16,10 @@ import uvicorn
 import yaml
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
+from ibauth.timing import timing
 
 from . import rate
 from .const import API_HOST, API_PORT, HEADERS, JOURNAL_DIR, VERSION
-from .timing import timing
 from .util import logging_level
 
 LOGGING_CONFIG_PATH = Path(__file__).parent / "logging" / "logging.yaml"
@@ -39,7 +39,7 @@ warnings.filterwarnings(
 
 # These are initialised in main().
 #
-auth: Optional[ibauth.IBKROAuthFlow] = None
+auth: Optional[ibauth.IBAuth] = None
 tickle = None
 
 # TICKLE LOOP ==================================================================

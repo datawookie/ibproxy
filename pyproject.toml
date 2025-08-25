@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.116.1",
     "uvicorn>=0.35.0",
-    "ibauth>=0.0.5",
+    "ibauth>=0.0.6",
     "bump2version>=1.0.1",
     "pre-commit>=4.3.0",
     "httpx>=0.28.1",

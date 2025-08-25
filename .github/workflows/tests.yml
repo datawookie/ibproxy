@@ -1,8 +1,8 @@
 name: Tests
 
 on:
-  push:          # run on all branches when you push
-  pull_request:  # run on all PRs, regardless of target branch
+  push:
+  pull_request:
 
 jobs:
   test:
@@ -30,7 +30,7 @@ jobs:
 
       - name: Run pytest with coverage
         run: |
-          uv run pytest --cov=src/ibproxy --cov-report=term-missing --cov-fail-under=90
+          uv run pytest --cov=src/ibproxy --cov-report=term-missing --cov-fail-under=95
 
       - name: Run pytest with coverage (XML)
         if: github.ref == 'refs/heads/master'
