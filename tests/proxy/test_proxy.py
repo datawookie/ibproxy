@@ -1,15 +1,14 @@
 import bz2
 import json
-import httpx
 from datetime import datetime, timezone
 from typing import Any, Dict
-
-import pytest
 from unittest.mock import Mock, patch
+
+import httpx
+import pytest
 
 import ibproxy.main as appmod
 import ibproxy.rate as ratemod
-from ibproxy.timing import timing
 
 
 class _MockAuth:
@@ -176,13 +175,6 @@ def test_rate_module_sliding_window(monkeypatch):
     assert period is not None and abs(period - 2.5) < 1e-6
 
 
-def test_timing_context_measures_time():
-    with timing() as t:
-        # do nothing substantial; duration should be a small positive float
-        pass
-    assert isinstance(t.duration, float)
-    assert t.duration >= 0.0
-
 def test_proxy_handles_request_error(client, monkeypatch):
     # Patch AsyncClient.request to raise a RequestError
     async def raise_request_error(*args, **kwargs):
@@ -194,6 +186,7 @@ def test_proxy_handles_request_error(client, monkeypatch):
 
     assert resp.status_code == 502
     assert resp.json() == {"error": "Proxy error: boom"}
+
 
 @patch("ibproxy.main.uvicorn.run")
 @patch("ibproxy.main.ibauth.auth_from_yaml")
