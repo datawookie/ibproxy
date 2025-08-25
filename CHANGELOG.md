@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.0.7] - 2025-08-25
+
+- Update to `ibauth` v0.0.6.
+
 ## [0.0.6] - 2025-08-24
 
 - Rename module from `proxy` to `ibproxy`.
