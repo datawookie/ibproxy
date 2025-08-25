@@ -339,7 +339,7 @@ wheels = [
 
 [[package]]
 name = "ibauth"
-version = "0.0.6"
+version = "0.0.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bump2version" },
@@ -353,14 +353,14 @@ dependencies = [
     { name = "ruff" },
     { name = "tenacity" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/47/c4/68a6c2e35fe9c57cd1ddce24afad94df542545c0a8c99a44821360355ae2/ibauth-0.0.6.tar.gz", hash = "sha256:be2c13a37833d4387c0b55abcfad81e7a32b36979cec20aec471aa3dc2dfc242", size = 8978, upload-time = "2025-08-25T06:09:25.561Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/47/c4/68a6c2e35fe9c57cd1ddce24afad94df542545c0a8c99a44821360355ae2/ibauth-0.0.7.tar.gz", hash = "sha256:be2c13a37833d4387c0b55abcfad81e7a32b36979cec20aec471aa3dc2dfc242", size = 8978, upload-time = "2025-08-25T06:09:25.561Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/25/37/a4fb35046192059a475f2b51761fb028410fb959d8da7accd306504caeb5/ibauth-0.0.6-py3-none-any.whl", hash = "sha256:6f795bb21b87029b19cd1599d34a7ed0789c88e07da4662e0059c2244890476d", size = 6484, upload-time = "2025-08-25T06:09:23.999Z" },
+    { url = "https://files.pythonhosted.org/packages/25/37/a4fb35046192059a475f2b51761fb028410fb959d8da7accd306504caeb5/ibauth-0.0.7-py3-none-any.whl", hash = "sha256:6f795bb21b87029b19cd1599d34a7ed0789c88e07da4662e0059c2244890476d", size = 6484, upload-time = "2025-08-25T06:09:23.999Z" },
 ]
 
 [[package]]
 name = "ibproxy"
-version = "0.0.6"
+version = "0.0.7"
 source = { editable = "." }
 dependencies = [
     { name = "bump2version" },
@@ -392,7 +392,7 @@ requires-dist = [
     { name = "curlify2", specifier = ">=2.0.0" },
     { name = "fastapi", specifier = ">=0.116.1" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "ibauth", specifier = ">=0.0.6" },
+    { name = "ibauth", specifier = ">=0.0.7" },
     { name = "pre-commit", specifier = ">=4.3.0" },
     { name = "tenacity", specifier = ">=9.1.2" },
     { name = "uvicorn", specifier = ">=0.35.0" },
