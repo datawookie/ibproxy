@@ -61,10 +61,10 @@ def _make_mock_httpx(
             self.headers = headers
             # minimal shape to satisfy .json() and .raise_for_status()
 
-        def json(self):
+        def json(self) -> dict[str, Any]:
             return json.loads(self.content.decode("utf-8"))
 
-        def raise_for_status(self):
+        def raise_for_status(self) -> None:
             if not (200 <= self.status_code < 400):
                 raise Exception(f"status {self.status_code}")
 
@@ -87,7 +87,7 @@ def _make_mock_httpx(
     return capture
 
 
-def test_proxy_forwards_and_strips_headers(client, monkeypatch, tmp_path):
+def test_proxy_forwards_and_strips_headers(client, monkeypatch, tmp_path) -> None:
     # Make dumps go to a temp place and fix the "now" used in rate.record()
     fixed_dt = datetime(2025, 8, 22, 12, 34, 56, 789000, tzinfo=timezone.utc)
     monkeypatch.setattr(appmod, "JOURNAL_DIR", tmp_path)
@@ -130,11 +130,12 @@ def test_proxy_forwards_and_strips_headers(client, monkeypatch, tmp_path):
     with bz2.open(expected_file, "rt", encoding="utf-8") as fh:
         dump = json.load(fh)
     assert dump["request"]["url"].endswith("/v1/api/portfolio/DUH638336/summary")
+    assert dump["request"]["params"] == {"x": "1"}
     assert dump["response"] == {"ok": True}
     assert isinstance(dump["duration"], float)
 
 
-def test_proxy_handles_post_json_body(client, monkeypatch, tmp_path):
+def test_proxy_handles_post_json_body(client, monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(appmod, "JOURNAL_DIR", tmp_path)
 
     captured = _make_mock_httpx(monkeypatch)
@@ -146,7 +147,7 @@ def test_proxy_handles_post_json_body(client, monkeypatch, tmp_path):
     assert json.loads(captured["content"].decode("utf-8")) == payload
 
 
-def test_rate_module_sliding_window(monkeypatch):
+def test_rate_module_sliding_window(monkeypatch) -> None:
     # Control time to make the math deterministic
     t0 = 1_000_000.0
     times = [t0, t0 + 1, t0 + 2, t0 + 7]  # last one falls outside default WINDOW=5 for earlier entries
@@ -175,7 +176,7 @@ def test_rate_module_sliding_window(monkeypatch):
     assert period is not None and abs(period - 2.5) < 1e-6
 
 
-def test_proxy_handles_request_error(client, monkeypatch):
+def test_proxy_handles_request_error(client, monkeypatch) -> None:
     # Patch AsyncClient.request to raise a RequestError
     async def raise_request_error(*args, **kwargs):
         raise httpx.RequestError("boom")
@@ -191,7 +192,7 @@ def test_proxy_handles_request_error(client, monkeypatch):
 @patch("ibproxy.main.uvicorn.run")
 @patch("ibproxy.main.ibauth.auth_from_yaml")
 @patch("ibproxy.main.argparse.ArgumentParser.parse_args")
-def test_main_runs_with_auth_and_uvicorn(mock_parse_args, mock_auth_from_yaml, mock_uvicorn):
+def test_main_runs_with_auth_and_uvicorn(mock_parse_args, mock_auth_from_yaml, mock_uvicorn) -> None:
     # Pretend --debug not passed
     mock_parse_args.return_value = Mock(debug=False)
 

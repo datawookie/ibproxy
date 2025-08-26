@@ -165,6 +165,7 @@ async def proxy(path: str, request: Request) -> Response:
                     "url": url,
                     "method": method,
                     "headers": headers,
+                    "params": params,
                     "body": json.loads(body.decode("utf-8")) if body else None,
                 },
                 "response": response.json(),
