@@ -1,5 +1,10 @@
 # Change Log
 
+## [0.0.8] - 2025-08-25
+
+- Change tickle interval to 60 s.
+- Don't tickle immediately if there has been a recent API request.
+
 ## [0.0.7] - 2025-08-25
 
 - Update to `ibauth` v0.0.6.
