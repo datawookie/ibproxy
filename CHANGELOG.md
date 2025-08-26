@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.0.9] - 2025-08-25
+
+- Include parameters in journal JSON.
+
 ## [0.0.8] - 2025-08-25
 
 - Change tickle interval to 60 s.
