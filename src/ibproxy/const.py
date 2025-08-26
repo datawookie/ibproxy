@@ -11,3 +11,5 @@ API_PORT = 9000
 HEADERS: dict[str, str] = {}
 
 JOURNAL_DIR = Path("./journal/")
+
+DATETIME_FMT = "%Y-%m-%d %H:%M:%S"

@@ -6,6 +6,7 @@ import logging
 import logging.config
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urljoin
@@ -19,7 +20,7 @@ from fastapi.responses import JSONResponse, Response
 from ibauth.timing import timing
 
 from . import rate
-from .const import API_HOST, API_PORT, HEADERS, JOURNAL_DIR, VERSION
+from .const import API_HOST, API_PORT, DATETIME_FMT, HEADERS, JOURNAL_DIR, VERSION
 from .util import logging_level
 
 LOGGING_CONFIG_PATH = Path(__file__).parent / "logging" / "logging.yaml"
@@ -46,18 +47,34 @@ tickle = None
 
 # Seconds between tickling the IBKR API.
 #
-TICKLE_INTERVAL = 10
+TICKLE_INTERVAL = 60
+TICKLE_MIN_SLEEP = 5
 
 
 async def tickle_loop() -> None:
     """Periodically call auth.tickle() while the app is running."""
     while True:
+        sleep: float = TICKLE_INTERVAL
         if auth is not None:
             try:
-                auth.tickle()
+                # When was the latest API request? If there was a recent API
+                # request then there is no reason to tickle.
+                if latest := rate.latest():
+                    logging.info(f"- Latest request: {datetime.fromtimestamp(latest).strftime(DATETIME_FMT)}")
+                    delay = datetime.now().timestamp() - latest
+                    if delay < TICKLE_INTERVAL:
+                        logging.info("- Within tickle interval. No need to tickle again.")
+                        sleep -= delay
+                        sleep = max(sleep, TICKLE_MIN_SLEEP)
+                    else:
+                        auth.tickle()
+                else:
+                    # There have been no recent API requests.
+                    auth.tickle()
             except Exception as e:
                 logging.error(f"Tickle failed: {e}")
-        await asyncio.sleep(TICKLE_INTERVAL)
+        logging.debug(f"⏰ Sleep: {sleep:.1f} s")
+        await asyncio.sleep(sleep)
 
 
 # ==============================================================================

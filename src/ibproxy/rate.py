@@ -36,6 +36,22 @@ def record(endpoint: str) -> datetime:
     return datetime.fromtimestamp(now, tz=UTC)
 
 
+def latest(endpoint: str | None = None) -> float | None:
+    """
+    Get the latest request timestamp.
+
+    Args:
+        endpoint (str | None): The API endpoint to get the latest timestamp for. If None, gets the overall latest timestamp.
+    """
+    with lock:
+        if endpoint is None:
+            # Consolidate times over all paths.
+            return max((dq[-1] for dq in times.values() if dq), default=None)
+        else:
+            dq = times[endpoint]
+            return dq[-1] if dq else None
+
+
 def rate(endpoint: str | None = None) -> tuple[float | None, float | None]:
     """
     Compute sliding-window average requests per second.
