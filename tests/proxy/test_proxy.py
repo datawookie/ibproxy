@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 import httpx
 import pytest
 
+import ibproxy.const as constmod
 import ibproxy.main as appmod
 import ibproxy.rate as ratemod
 
@@ -94,11 +95,11 @@ def test_proxy_forwards_and_strips_headers(client, monkeypatch, tmp_path) -> Non
 
     # Patch rate.record() to avoid time dependence and to return the fixed datetime
     def _record(_path: str) -> datetime:
-        # also maintain minimal realistic rate state
+        # Maintain minimal realistic rate state.
         ratemod.times[_path].append(fixed_dt.timestamp())
         return fixed_dt
 
-    monkeypatch.setattr(appmod.rate, "record", _record)
+    monkeypatch.setattr(ratemod.rate, "record", _record)
 
     captured = _make_mock_httpx(monkeypatch)
 
@@ -193,32 +194,31 @@ def test_proxy_handles_request_error(client, monkeypatch) -> None:
 @patch("ibproxy.main.ibauth.auth_from_yaml")
 @patch("ibproxy.main.argparse.ArgumentParser.parse_args")
 def test_main_runs_with_auth_and_uvicorn(mock_parse_args, mock_auth_from_yaml, mock_uvicorn) -> None:
-    # Pretend --debug not passed
-    mock_parse_args.return_value = Mock(debug=False)
+    # Pretend --debug not passed.
+    mock_parse_args.return_value = Mock(debug=False, port=constmod.API_PORT)
 
-    # Fake auth object with methods
+    # Fake auth object with methods.
     fake_auth = Mock()
     mock_auth_from_yaml.return_value = fake_auth
 
-    # Run main
     appmod.main()
 
-    # Auth should be constructed from config.yaml
+    # Auth constructed from config.yaml.
     mock_auth_from_yaml.assert_called_once_with("config.yaml")
 
-    # Auth methods should be called in order
+    # Auth methods should be called in order.
     fake_auth.get_access_token.assert_called_once()
     fake_auth.get_bearer_token.assert_called_once()
     fake_auth.ssodh_init.assert_called_once()
     fake_auth.validate_sso.assert_called_once()
 
-    # uvicorn should be launched with expected args
+    # Uvicorn should be launched with expected args.
     mock_uvicorn.assert_called_once()
     args, kwargs = mock_uvicorn.call_args
-    assert kwargs["host"] == appmod.API_HOST
-    assert kwargs["port"] == appmod.API_PORT
+    assert kwargs["host"] == constmod.API_HOST
+    assert kwargs["port"] == constmod.API_PORT
     assert kwargs["workers"] == 1
     assert kwargs["reload"] is False
 
-    # logout should happen after uvicorn.run
+    # Logout should happen after uvicorn.run().
     fake_auth.logout.assert_called_once()

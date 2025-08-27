@@ -190,6 +190,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--debug", action="store_true", help="Debugging mode.")
+    parser.add_argument("--port", type=int, default=None, help=f"Port to run the API server on (default: {API_PORT}).")
     args = parser.parse_args()
 
     if args.debug:
@@ -208,7 +209,7 @@ def main() -> None:
     uvicorn.run(
         "ibproxy.main:app",
         host=API_HOST,
-        port=API_PORT,
+        port=args.port or API_PORT,
         #
         # Can only have a single worker and cannot support reload.
         #

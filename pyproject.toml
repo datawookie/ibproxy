@@ -37,6 +37,7 @@ ibproxy = "ibproxy.main:main"
 
 [tool.mypy]
 ignore_missing_imports = false
+exclude = ['^tests/']
 
 [[tool.mypy.overrides]]
 module = ["yaml"]
