@@ -136,11 +136,36 @@ async def proxy(path: str, request: Request) -> Response:
         # Forward request.
         async with httpx.AsyncClient() as client:
             now = rate.record(path)
-            with timing() as duration:
-                response = await client.request(
-                    method=method, url=url, content=body, headers={**headers, **HEADERS}, params=params, timeout=30.0
+            try:
+                with timing() as duration:
+                    response = await client.request(
+                        method=method,
+                        url=url,
+                        content=body,
+                        headers={**headers, **HEADERS},
+                        params=params,
+                        timeout=30.0,
+                    )
+                response.raise_for_status()
+            except httpx.HTTPStatusError as error:
+                # Upstream responded with 4xx/5xx.
+                upstream_status = error.response.status_code
+                logging.error(
+                    "Upstream HTTP error %s for %s (url=%s). Response: %s",
+                    upstream_status,
+                    method,
+                    url,
+                    error.response.text,
                 )
-            response.raise_for_status()
+                # Return a proxied error to caller (don't leak stack trace).
+                return JSONResponse(
+                    status_code=502,
+                    content={
+                        "error": "Upstream service error.",
+                        "upstream_status": upstream_status,
+                        "detail": error.response.text,
+                    },
+                )
             logging.info(f"⏳ Duration: {duration.duration:.3f} s")
 
         headers = dict(response.headers)
@@ -180,9 +205,8 @@ async def proxy(path: str, request: Request) -> Response:
             headers=headers,
             media_type=headers.get("content-type", "application/json"),
         )
-
-    except httpx.RequestError as e:
-        return JSONResponse(status_code=502, content={"error": f"Proxy error: {str(e)}"})
+    except httpx.RequestError as error:
+        return JSONResponse(status_code=502, content={"error": f"Proxy error: {str(error)}"})
 
 
 def main() -> None:

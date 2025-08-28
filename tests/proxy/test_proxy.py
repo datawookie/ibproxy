@@ -1,11 +1,13 @@
 import bz2
 import json
+import logging
 from datetime import datetime, timezone
 from typing import Any, Dict
 from unittest.mock import Mock, patch
 
 import httpx
 import pytest
+from freezegun import freeze_time
 
 import ibproxy.const as constmod
 import ibproxy.main as appmod
@@ -88,18 +90,19 @@ def _make_mock_httpx(
     return capture
 
 
+@freeze_time("2025-08-22T12:34:56.789000Z")
 def test_proxy_forwards_and_strips_headers(client, monkeypatch, tmp_path) -> None:
-    # Make dumps go to a temp place and fix the "now" used in rate.record()
-    fixed_dt = datetime(2025, 8, 22, 12, 34, 56, 789000, tzinfo=timezone.utc)
+    # Make dumps go to a temp place.
     monkeypatch.setattr(appmod, "JOURNAL_DIR", tmp_path)
 
     # Patch rate.record() to avoid time dependence and to return the fixed datetime
     def _record(_path: str) -> datetime:
         # Maintain minimal realistic rate state.
-        ratemod.times[_path].append(fixed_dt.timestamp())
-        return fixed_dt
+        now = datetime.now(tz=timezone.utc)
+        ratemod.times[_path].append(now.timestamp())
+        return now
 
-    monkeypatch.setattr(ratemod.rate, "record", _record)
+    monkeypatch.setattr(ratemod, "record", _record)
 
     captured = _make_mock_httpx(monkeypatch)
 
@@ -222,3 +225,42 @@ def test_main_runs_with_auth_and_uvicorn(mock_parse_args, mock_auth_from_yaml, m
 
     # Logout should happen after uvicorn.run().
     fake_auth.logout.assert_called_once()
+
+
+def test_upstream_500_results_in_502_and_logs(monkeypatch, client, caplog):
+    monkeypatch.setattr(appmod, "auth", _MockAuth())
+
+    # TODO: This is done in other tests too (with freezegun). Use a fixture?
+    monkeypatch.setattr(ratemod, "record", lambda endpoint: datetime.now(timezone.utc))
+
+    # Build a real httpx.Response with status 500.
+    upstream_url = "https://api.ibkr.com/v1/api/iserver/marketdata/snapshot?conids=416904"
+    upstream_resp = httpx.Response(
+        500, content=b'{"error":"boom upstream"}', request=httpx.Request("GET", upstream_url)
+    )
+
+    captured = {}
+
+    async def fake_request(self, *, method, url, content, headers, params, timeout):
+        captured["method"] = method
+        captured["url"] = url
+        captured["headers"] = headers
+        captured["params"] = params
+        return upstream_resp
+
+    monkeypatch.setattr("httpx.AsyncClient.request", fake_request, raising=True)
+
+    caplog.set_level(logging.ERROR)
+
+    resp = client.get("/v1/api/iserver/marketdata/snapshot", params={"conids": "416904"})
+
+    assert resp.status_code == 502, resp.text
+    body = resp.json()
+    assert body["error"] == "Upstream service error."
+    assert body["upstream_status"] == 500
+    assert "boom upstream" in body["detail"]
+
+    assert any("Upstream HTTP error 500" in rec.message for rec in caplog.records)
+
+    fwd_headers = {k.lower(): v for k, v in captured["headers"].items()}
+    assert fwd_headers.get("authorization") == f"Bearer {appmod.auth.bearer_token}"

@@ -21,6 +21,7 @@ dev = [
     "ruff>=0.12.10",
 ]
 test = [
+    "freezegun>=1.5.5",
     "pytest>=8.3.5",
     "pytest-asyncio>=1.1.0",
     "pytest-cov>=6.1.1",
