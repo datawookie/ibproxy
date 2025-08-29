@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.0.10] - 2025-08-25
+
+- Add failed requests as journal JSON.
+
 ## [0.0.9] - 2025-08-25
 
 - Include parameters in journal JSON.
