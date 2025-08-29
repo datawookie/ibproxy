@@ -18,7 +18,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "mypy>=1.16.0",
-    "ruff>=0.12.10",
+    "ruff>=0.12.11",
 ]
 test = [
     "freezegun>=1.5.5",

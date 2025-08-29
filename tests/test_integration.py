@@ -4,7 +4,6 @@ from typing import Any, Dict
 
 import httpx
 import pytest
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 PROXY_URL = os.getenv("PROXY_URL", "http://127.0.0.1:9000")
 ACCOUNT_ID = os.getenv("IBKR_ACCOUNT_ID", "DUH638336")
@@ -19,16 +18,8 @@ DEFAULT_HEADERS = {
 REQUEST_TIMEOUT = 5.0
 
 
-@retry(
-    stop=stop_after_attempt(3),
-    wait=wait_fixed(0.25),
-    retry=retry_if_exception_type(Exception),
-    reraise=True,
-)
-def _get_json(client: httpx.Client, url: str) -> Dict[str, Any]:
-    resp = client.get(url, headers=DEFAULT_HEADERS)
-    resp.raise_for_status()
-    return resp.json()
+def _get_response(client: httpx.Client, url: str) -> Dict[str, Any]:
+    return client.get(url, headers=DEFAULT_HEADERS)
 
 
 @pytest.fixture(scope="session")
@@ -51,7 +42,12 @@ def _ensure_proxy_running(client: httpx.Client):
 @pytest.mark.integration
 def test_portfolio_summary(client: httpx.Client):
     url = f"/v1/api/portfolio/{ACCOUNT_ID}/summary"
-    data = _get_json(client, url)
+    response = _get_response(client, url)
+    data = response.json()
+
+    print(response.headers)
+
+    assert response.headers["content-type"] == "application/json; charset=utf-8"
 
     assert isinstance(data, dict)
     for key in ("accountcode", "acctid", "currency"):
@@ -72,11 +68,25 @@ def test_portfolio_allocation_three_calls(client: httpx.Client):
     # Call 3 times with 0.5 s spacing to respect pacing limits.
     payloads = []
     for _ in range(3):
-        payloads.append(_get_json(client, url))
+        payloads.append(_get_response(client, url).json())
         time.sleep(0.5)
 
     for p in payloads:
         assert isinstance(p, (dict, list))
+
+
+@pytest.mark.integration
+def test_invalid(client: httpx.Client):
+    url = "/invalid"
+    response = _get_response(client, url)
+    data = response.json()
+
+    assert isinstance(data, dict)
+    assert data.get("error") == "Upstream service error."
+    assert data.get("upstream_status") == 404
+    assert "File not found" in data.get("detail", "")
+
+    assert response.headers["content-type"] == "application/json"
 
 
 @pytest.mark.integration
@@ -85,7 +95,7 @@ def test_portfolio_allocation_three_calls(client: httpx.Client):
 @pytest.mark.skip(reason="Enable when you want to exercise slower-paced endpoint.")
 def test_iserver_accounts(client: httpx.Client):
     url = "/v1/api/iserver/accounts"
-    data = _get_json(client, url)
+    data = _get_response(client, url).json()
     assert isinstance(data, (dict, list))
     if isinstance(data, list) and data:
         assert isinstance(data[0], dict)

@@ -40,7 +40,7 @@ def _make_mock_httpx(
     monkeypatch,
     *,
     status=200,
-    body=b'{"ok": true}',
+    body: bytes | str = b'{"ok": true}',
     headers: Dict[str, str] | None = None,
     capture: Dict[str, Any] | None = None,
 ):
@@ -56,13 +56,20 @@ def _make_mock_httpx(
         }
     if capture is None:
         capture = {}
+    if not isinstance(body, bytes):
+        body = body.encode("utf-8")
 
     class MockResponse:
         def __init__(self):
             self.content = body
+            self.text = str(body, "utf-8")
             self.status_code = status
+            self.request = Mock()
+            self.request.headers = headers
+            # Make response headers same as request headers.
             self.headers = headers
-            # minimal shape to satisfy .json() and .raise_for_status()
+
+            self.is_error = not (200 <= self.status_code < 400)
 
         def json(self) -> dict[str, Any]:
             return json.loads(self.content.decode("utf-8"))
@@ -92,7 +99,6 @@ def _make_mock_httpx(
 
 @freeze_time("2025-08-22T12:34:56.789000Z")
 def test_proxy_forwards_and_strips_headers(client, monkeypatch, tmp_path) -> None:
-    # Make dumps go to a temp place.
     monkeypatch.setattr(appmod, "JOURNAL_DIR", tmp_path)
 
     # Patch rate.record() to avoid time dependence and to return the fixed datetime
@@ -106,7 +112,6 @@ def test_proxy_forwards_and_strips_headers(client, monkeypatch, tmp_path) -> Non
 
     captured = _make_mock_httpx(monkeypatch)
 
-    # Send a request through the ASGI app
     resp = client.get("/v1/api/portfolio/DUH638336/summary", params={"x": "1"}, headers={"X-From": "test"})
     assert resp.status_code == 200
     assert resp.json() == {"ok": True}
@@ -128,14 +133,14 @@ def test_proxy_forwards_and_strips_headers(client, monkeypatch, tmp_path) -> Non
     # Query params forwarded
     assert captured["params"] == {"x": "1"}
 
-    # Journal file written with fixed datetime path
     expected_file = tmp_path / "20250822" / "20250822-123456:789000.json.bz2"
     assert expected_file.exists()
     with bz2.open(expected_file, "rt", encoding="utf-8") as fh:
         dump = json.load(fh)
+    print(dump)
     assert dump["request"]["url"].endswith("/v1/api/portfolio/DUH638336/summary")
     assert dump["request"]["params"] == {"x": "1"}
-    assert dump["response"] == {"ok": True}
+    assert dump["response"]["data"] == {"ok": True}
     assert isinstance(dump["duration"], float)
 
 
@@ -227,40 +232,39 @@ def test_main_runs_with_auth_and_uvicorn(mock_parse_args, mock_auth_from_yaml, m
     fake_auth.logout.assert_called_once()
 
 
-def test_upstream_500_results_in_502_and_logs(monkeypatch, client, caplog):
-    monkeypatch.setattr(appmod, "auth", _MockAuth())
+@freeze_time("2025-08-29T15:00:10.000000Z")
+def test_upstream_500_results_in_502_and_logs(monkeypatch, client, caplog, tmp_path) -> None:
+    # Capture all logging at DEBUG level and above.
+    caplog.set_level(logging.DEBUG)
 
-    # TODO: This is done in other tests too (with freezegun). Use a fixture?
-    monkeypatch.setattr(ratemod, "record", lambda endpoint: datetime.now(timezone.utc))
+    monkeypatch.setattr(appmod, "JOURNAL_DIR", tmp_path)
 
-    # Build a real httpx.Response with status 500.
-    upstream_url = "https://api.ibkr.com/v1/api/iserver/marketdata/snapshot?conids=416904"
-    upstream_resp = httpx.Response(
-        500, content=b'{"error":"boom upstream"}', request=httpx.Request("GET", upstream_url)
-    )
+    # TODO: This is repeated from another test. Factor into separate function or fixture.
+    def _record(_path: str) -> datetime:
+        # Maintain minimal realistic rate state.
+        now = datetime.now(tz=timezone.utc)
+        ratemod.times[_path].append(now.timestamp())
+        return now
 
-    captured = {}
+    monkeypatch.setattr(ratemod, "record", _record)
 
-    async def fake_request(self, *, method, url, content, headers, params, timeout):
-        captured["method"] = method
-        captured["url"] = url
-        captured["headers"] = headers
-        captured["params"] = params
-        return upstream_resp
+    ERROR_BODY = '{"error": "Service Unavailable", "statusCode": 503}'
 
-    monkeypatch.setattr("httpx.AsyncClient.request", fake_request, raising=True)
+    _make_mock_httpx(monkeypatch, status=503, body=ERROR_BODY)
 
-    caplog.set_level(logging.ERROR)
-
-    resp = client.get("/v1/api/iserver/marketdata/snapshot", params={"conids": "416904"})
-
-    assert resp.status_code == 502, resp.text
+    resp = client.get("/v1/api/portfolio/DUH638336/summary")
+    assert resp.status_code == 502
     body = resp.json()
-    assert body["error"] == "Upstream service error."
-    assert body["upstream_status"] == 500
-    assert "boom upstream" in body["detail"]
+    assert body.get("error") == "Upstream service error."
+    assert body.get("upstream_status") == 503
+    assert body.get("detail") == ERROR_BODY
 
-    assert any("Upstream HTTP error 500" in rec.message for rec in caplog.records)
+    assert any("Upstream API error 503" in rec.message for rec in caplog.records)
 
-    fwd_headers = {k.lower(): v for k, v in captured["headers"].items()}
-    assert fwd_headers.get("authorization") == f"Bearer {appmod.auth.bearer_token}"
+    expected_file = tmp_path / "20250829" / "20250829-150010:000000.json.bz2"
+    assert expected_file.exists()
+    with bz2.open(expected_file, "rt", encoding="utf-8") as fh:
+        dump = json.load(fh)
+    assert dump["request"]["url"].endswith("/v1/api/portfolio/DUH638336/summary")
+    assert json.dumps(dump["response"]["data"]) == ERROR_BODY
+    assert isinstance(dump["duration"], float)

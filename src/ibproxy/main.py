@@ -124,47 +124,28 @@ async def proxy(path: str, request: Request) -> Response:
         if body:
             logging.debug(f"- Body:    {body}")
         if logging_level() <= logging.DEBUG:
-            logging.debug("- Headers:")
-            for k, v in headers.items():
-                logging.debug(f"  - {k}: {v}")
-            logging.debug("- Params:")
-            for k, v in params.items():
-                logging.debug(f"  - {k}: {v}")
+            if headers:
+                logging.debug("- Headers:")
+                for k, v in headers.items():
+                    logging.debug(f"  - {k}: {v}")
+            if params:
+                logging.debug("- Params:")
+                for k, v in params.items():
+                    logging.debug(f"  - {k}: {v}")
 
         headers["Authorization"] = f"Bearer {auth.bearer_token}"  # type: ignore[union-attr]
 
         # Forward request.
         async with httpx.AsyncClient() as client:
             now = rate.record(path)
-            try:
-                with timing() as duration:
-                    response = await client.request(
-                        method=method,
-                        url=url,
-                        content=body,
-                        headers={**headers, **HEADERS},
-                        params=params,
-                        timeout=30.0,
-                    )
-                response.raise_for_status()
-            except httpx.HTTPStatusError as error:
-                # Upstream responded with 4xx/5xx.
-                upstream_status = error.response.status_code
-                logging.error(
-                    "Upstream HTTP error %s for %s (url=%s). Response: %s",
-                    upstream_status,
-                    method,
-                    url,
-                    error.response.text,
-                )
-                # Return a proxied error to caller (don't leak stack trace).
-                return JSONResponse(
-                    status_code=502,
-                    content={
-                        "error": "Upstream service error.",
-                        "upstream_status": upstream_status,
-                        "detail": error.response.text,
-                    },
+            with timing() as duration:
+                response = await client.request(
+                    method=method,
+                    url=url,
+                    content=body,
+                    headers={**headers, **HEADERS},
+                    params=params,
+                    timeout=30.0,
                 )
             logging.info(f"⏳ Duration: {duration.duration:.3f} s")
 
@@ -172,6 +153,8 @@ async def proxy(path: str, request: Request) -> Response:
         # Remove headers from response. These will be replaced with correct values.
         headers.pop("content-length", None)
         headers.pop("content-encoding", None)
+
+        content_type = headers.get("content-type", "application/json")
 
         logging.info(f"⌚ Rates (last {rate.WINDOW} s):")
         rps, period = rate.rate(path)
@@ -189,22 +172,47 @@ async def proxy(path: str, request: Request) -> Response:
                 "request": {
                     "url": url,
                     "method": method,
-                    "headers": headers,
+                    "headers": dict(response.request.headers),
                     "params": params,
                     "body": json.loads(body.decode("utf-8")) if body else None,
                 },
-                "response": response.json(),
+                "response": {
+                    "status_code": response.status_code,
+                    "data": response.json() if content_type.startswith("application/json") else response.text,
+                },
                 "duration": duration.duration,
             }
             json.dump(dump, f, indent=2)
 
-        logging.info("✅ Return response.")
-        return Response(
-            content=response.content,
-            status_code=response.status_code,
-            headers=headers,
-            media_type=headers.get("content-type", "application/json"),
-        )
+        if response.is_error:
+            # Upstream responded with 4xx/5xx status.
+            upstream_status = response.status_code
+            logging.error(
+                "🚨 Upstream API error %s: %s %s.",
+                upstream_status,
+                method,
+                url,
+            )
+            # Return a proxied error to caller (don't leak stack trace).
+            return JSONResponse(
+                content={
+                    "error": "Upstream service error.",
+                    "upstream_status": upstream_status,
+                    "detail": response.text,
+                },
+                # HTTP 502 Bad Gateway error indicates a server-side
+                # communication issue where a gateway or proxy received an
+                # invalid response from an upstream server
+                status_code=502,
+            )
+        else:
+            logging.info("✅ Return response.")
+            return Response(
+                content=response.content,
+                status_code=response.status_code,
+                headers=headers,
+                media_type=content_type,
+            )
     except httpx.RequestError as error:
         return JSONResponse(status_code=502, content={"error": f"Proxy error: {str(error)}"})
 
