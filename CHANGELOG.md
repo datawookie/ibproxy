@@ -1,5 +1,11 @@
 # Change Log
 
+## [0.0.11] - 2025-08-30
+
+- Write JSON journal data in a thread so that it doesn't block.
+- Update to `ibauth` v0.0.7.
+- Simplified authentication workflow.
+
 ## [0.0.10] - 2025-08-25
 
 - Add failed requests as journal JSON.
