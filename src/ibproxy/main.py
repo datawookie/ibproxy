@@ -165,24 +165,32 @@ async def proxy(path: str, request: Request) -> Response:
         json_path = JOURNAL_DIR / (filename := now.strftime("%Y%m%d/%Y%m%d-%H%M%S:%f.json.bz2"))
         #
         json_path.parent.mkdir(parents=True, exist_ok=True)
-        #
-        with bz2.open(json_path, "wt", encoding="utf-8") as f:
-            logging.info(f"💾 Dump: {filename}.")
-            dump = {
-                "request": {
-                    "url": url,
-                    "method": method,
-                    "headers": dict(response.request.headers),
-                    "params": params,
-                    "body": json.loads(body.decode("utf-8")) if body else None,
-                },
-                "response": {
-                    "status_code": response.status_code,
-                    "data": response.json() if content_type.startswith("application/json") else response.text,
-                },
-                "duration": duration.duration,
-            }
-            json.dump(dump, f, indent=2)
+
+        def _write_journal() -> None:
+            """
+            Write request/response journal to a compressed JSON file.
+
+            This is a blocking function so it needs to be run in a separate thread.
+            """
+            with bz2.open(json_path, "wt", encoding="utf-8") as f:
+                logging.info(f"💾 Dump: {filename}.")
+                dump = {
+                    "request": {
+                        "url": url,
+                        "method": method,
+                        "headers": dict(response.request.headers),
+                        "params": params,
+                        "body": json.loads(body.decode("utf-8")) if body else None,
+                    },
+                    "response": {
+                        "status_code": response.status_code,
+                        "data": response.json() if content_type.startswith("application/json") else response.text,
+                    },
+                    "duration": duration.duration,
+                }
+                json.dump(dump, f, indent=2)
+
+        await asyncio.to_thread(_write_journal)
 
         if response.is_error:
             # Upstream responded with 4xx/5xx status.
