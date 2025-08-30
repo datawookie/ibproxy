@@ -93,3 +93,15 @@ uv run ibproxy --debug
 ```
 
 You can access the Swagger interface at http://127.0.0.1:9000/docs.
+
+If you are testing changes to `ibauth` then you can install a local copy.
+
+1. Add this to the end of `pyproject.toml`:
+
+    ```
+    [tool.uv.sources]
+    ibauth = { path = "../ibauth", editable = true }
+    ```
+
+2. `uv lock --upgrade`
+3. `uv sync`

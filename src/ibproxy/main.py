@@ -240,12 +240,6 @@ def main() -> None:
 
     auth = ibauth.auth_from_yaml("config.yaml")
 
-    auth.get_access_token()
-    auth.get_bearer_token()
-
-    auth.ssodh_init()
-    auth.validate_sso()
-
     uvicorn.run(
         "ibproxy.main:app",
         host=API_HOST,

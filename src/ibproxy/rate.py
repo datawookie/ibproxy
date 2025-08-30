@@ -61,6 +61,10 @@ def rate(endpoint: str | None = None) -> tuple[float | None, float | None]:
     would require a bit more work and since this is possibly being done
     frequently it's probably not worth the extra time.
 
+    🚨 This function does not prune the times to the window duration. This is
+    only done when new times are added to the queue. So it's possible to get
+    averages times that are longer than the window duration.
+
     Args:
         endpoint (str | None): The API endpoint to compute the rate for. If None, computes the overall rate.
     """

@@ -206,19 +206,13 @@ def test_main_runs_with_auth_and_uvicorn(mock_parse_args, mock_auth_from_yaml, m
     mock_parse_args.return_value = Mock(debug=False, port=constmod.API_PORT)
 
     # Fake auth object with methods.
-    fake_auth = Mock()
-    mock_auth_from_yaml.return_value = fake_auth
+    auth = Mock()
+    mock_auth_from_yaml.return_value = auth
 
     appmod.main()
 
     # Auth constructed from config.yaml.
     mock_auth_from_yaml.assert_called_once_with("config.yaml")
-
-    # Auth methods should be called in order.
-    fake_auth.get_access_token.assert_called_once()
-    fake_auth.get_bearer_token.assert_called_once()
-    fake_auth.ssodh_init.assert_called_once()
-    fake_auth.validate_sso.assert_called_once()
 
     # Uvicorn should be launched with expected args.
     mock_uvicorn.assert_called_once()
@@ -229,7 +223,7 @@ def test_main_runs_with_auth_and_uvicorn(mock_parse_args, mock_auth_from_yaml, m
     assert kwargs["reload"] is False
 
     # Logout should happen after uvicorn.run().
-    fake_auth.logout.assert_called_once()
+    auth.logout.assert_called_once()
 
 
 @freeze_time("2025-08-29T15:00:10.000000Z")
