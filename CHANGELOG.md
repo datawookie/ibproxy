@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.0.12] - 2025-09-01
+
+- Add --tickle-mode option, which can be 'off', 'auto' or 'always'.
+
 ## [0.0.11] - 2025-08-30
 
 - Write JSON journal data in a thread so that it doesn't block.
