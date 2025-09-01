@@ -1,6 +1,6 @@
 from pathlib import Path
 
-VERSION = "0.0.11"
+VERSION = "0.0.12"
 
 # Use the loopback interface for security. If the proxy is hosted on EC2 this
 # will mean that requests from the internet will not reach the proxy.
