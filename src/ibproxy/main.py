@@ -49,28 +49,42 @@ tickle = None
 #
 TICKLE_INTERVAL = 60
 TICKLE_MIN_SLEEP = 5
+TICKLE_MODE: str = "always"
 
 
 async def tickle_loop() -> None:
     """Periodically call auth.tickle() while the app is running."""
+    if TICKLE_MODE == "off":
+        logging.warning("⛔ Tickle loop disabled.")
+        return
+
     while True:
         sleep: float = TICKLE_INTERVAL
         if auth is not None:
             try:
-                # When was the latest API request? If there was a recent API
-                # request then there is no reason to tickle.
-                if latest := rate.latest():
-                    logging.info(f"- Latest request: {datetime.fromtimestamp(latest).strftime(DATETIME_FMT)}")
-                    delay = datetime.now().timestamp() - latest
-                    if delay < TICKLE_INTERVAL:
-                        logging.info("- Within tickle interval. No need to tickle again.")
-                        sleep -= delay
-                        sleep = max(sleep, TICKLE_MIN_SLEEP)
-                    else:
-                        auth.tickle()
-                else:
-                    # There have been no recent API requests.
+                if TICKLE_MODE == "always":
+                    # Always tickle on every interval.
                     auth.tickle()
+                else:
+                    # Only tickle if there have been no recent API requests.
+                    #
+                    # TODO: Should probably on consider successful requests since
+                    # TODO: unsuccessful requests probably don't keep session open.
+                    #
+                    # When was the latest API request? If there was a recent API
+                    # request then there is no reason to tickle.
+                    if latest := rate.latest():
+                        logging.info(f"- Latest request: {datetime.fromtimestamp(latest).strftime(DATETIME_FMT)}")
+                        delay = datetime.now().timestamp() - latest
+                        if delay < TICKLE_INTERVAL:
+                            logging.info("- Within tickle interval. No need to tickle again.")
+                            sleep -= delay
+                            sleep = max(sleep, TICKLE_MIN_SLEEP)
+                        else:
+                            auth.tickle()
+                    else:
+                        # There have been no recent API requests.
+                        auth.tickle()
             except Exception as e:
                 logging.error(f"Tickle failed: {e}")
         logging.debug(f"⏰ Sleep: {sleep:.1f} s")
@@ -231,6 +245,15 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--debug", action="store_true", help="Debugging mode.")
     parser.add_argument("--port", type=int, default=None, help=f"Port to run the API server on (default: {API_PORT}).")
+    parser.add_argument(
+        "--tickle-mode",
+        choices=["always", "auto", "off"],
+        default="always",
+        help="How the tickle loop decides to call auth.tickle(): "
+        "'always' = ignore activity and call every interval (default), "
+        "'auto' = call only when idle, "
+        "'off' = don't run the tickle loop.",
+    )
     args = parser.parse_args()
 
     if args.debug:
@@ -239,6 +262,10 @@ def main() -> None:
     logging.config.dictConfig(LOGGING_CONFIG)
 
     auth = ibauth.auth_from_yaml("config.yaml")
+
+    global TICKLE_MODE
+    TICKLE_MODE = args.tickle_mode
+    logging.info(f"⏰ Tickle mode: {TICKLE_MODE}")
 
     uvicorn.run(
         "ibproxy.main:app",

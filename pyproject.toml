@@ -46,7 +46,12 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = ["--timeout=5", "--disable-socket", "--allow-hosts=localhost", "--allow-unix-socket"]
+addopts = [
+    "--timeout=5",
+    "--disable-socket",
+    "--allow-hosts=localhost",
+    "--allow-unix-socket"
+]
 markers = [
   "integration: Tests that require a running ibproxy.",
   "seldom: Tests that hit endpoints that have a slow rate limit.",

@@ -15,6 +15,8 @@ WINDOW = 5
 
 # IBKR rate limits are documented at https://www.interactivebrokers.com/campus/ibkr-api-page/web-api-trading/#pacing-limitations-8.
 
+# TODO: Could we use https://github.com/ZhuoZhuoCrayon/throttled-py?
+
 
 def record(endpoint: str) -> datetime:
     """
