@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.0.13] - 2025-09-07
+
+- Get IBKR status.
+
 ## [0.0.12] - 2025-09-01
 
 - Add --tickle-mode option, which can be 'off', 'auto' or 'always'.
