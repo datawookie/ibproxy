@@ -26,6 +26,31 @@ wheels = [
 ]
 
 [[package]]
+name = "beautifulsoup4"
+version = "4.13.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "soupsieve" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/85/2e/3e5079847e653b1f6dc647aa24549d68c6addb4c595cc0d902d1b19308ad/beautifulsoup4-4.13.5.tar.gz", hash = "sha256:5e70131382930e7c3de33450a2f54a63d5e4b19386eab43a5b34d594268f3695", size = 622954, upload-time = "2025-08-24T14:06:13.168Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/04/eb/f4151e0c7377a6e08a38108609ba5cede57986802757848688aeedd1b9e8/beautifulsoup4-4.13.5-py3-none-any.whl", hash = "sha256:642085eaa22233aceadff9c69651bc51e8bf3f874fb6d7104ece2beb24b47c4a", size = 105113, upload-time = "2025-08-24T14:06:14.884Z" },
+]
+
+[[package]]
+name = "bs4"
+version = "0.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "beautifulsoup4" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c9/aa/4acaf814ff901145da37332e05bb510452ebed97bc9602695059dd46ef39/bs4-0.0.2.tar.gz", hash = "sha256:a48685c58f50fe127722417bae83fe6badf500d54b55f7e39ffe43b798653925", size = 698, upload-time = "2024-01-17T18:15:47.371Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/51/bb/bf7aab772a159614954d84aa832c129624ba6c32faa559dfb200a534e50b/bs4-0.0.2-py2.py3-none-any.whl", hash = "sha256:abf8742c0805ef7f662dce4b51cca104cffe52b835238afc169142ab9b3fbccc", size = 1189, upload-time = "2024-01-17T18:15:48.613Z" },
+]
+
+[[package]]
 name = "bump2version"
 version = "1.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -248,18 +273,6 @@ wheels = [
 ]
 
 [[package]]
-name = "curlify"
-version = "3.0.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "requests" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/62/df/e9c2720d32c5de985ce64d5dedf883b52c26ff5e9aa2ba2becea00098320/curlify-3.0.0.tar.gz", hash = "sha256:7b488ff3c924dba3433a1cc74044c0942da21f0a97fa26c3138319ba640ca412", size = 3668, upload-time = "2025-05-25T11:50:00.785Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/9e/f8/912ebddbff8ea603d4c90fa31557096f927b17efd30a166ce7ac1242910a/curlify-3.0.0-py3-none-any.whl", hash = "sha256:52060c0eb7a656b7bde6b668c32f337bed4d736ce230755767e3ada56a09c338", size = 3580, upload-time = "2025-05-25T11:49:59.335Z" },
-]
-
-[[package]]
 name = "curlify2"
 version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -351,23 +364,19 @@ wheels = [
 
 [[package]]
 name = "ibauth"
-version = "0.0.7"
+version = "0.0.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "bump2version" },
     { name = "cryptography" },
-    { name = "curlify" },
     { name = "mypy" },
-    { name = "pre-commit" },
     { name = "pyjwt" },
     { name = "pyyaml" },
     { name = "requests" },
-    { name = "ruff" },
     { name = "tenacity" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f9/ac/c37b45063f1d9507478685012ce98a2db3aedbd0ef222cf2795a59b1c29b/ibauth-0.0.7.tar.gz", hash = "sha256:3ad3b55fa96404544a5307b31870d4e6be632ddd7236762e90748b753d26526d", size = 11515, upload-time = "2025-08-30T06:27:54.162Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5a/ba/67500845126546e9cbef367a671b8714e68ffe5e634368c6e8fbbcd13f45/ibauth-0.0.8.tar.gz", hash = "sha256:3b4f002677daaad061b4d679344a140366ba9031139212ddf5a04a7030e88b35", size = 13448, upload-time = "2025-09-07T06:22:09.211Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/79/e3/91cddfd9fa6254bdf5d7f4e0308bfb34f8964640a596fb0592a0fa624386/ibauth-0.0.7-py3-none-any.whl", hash = "sha256:6252dcbf5eb4a8c657b2f78577b79723d62700aad2f3f567a95589353f0c9a2f", size = 8142, upload-time = "2025-08-30T06:27:52.895Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/c9/d957aff7d384192c0ff3adcefb80e8d5d949bba0a615b0726296c028be7d/ibauth-0.0.8-py3-none-any.whl", hash = "sha256:506390922fa588a58b5e5cf29a85a4641ac6f7d0d5282a32200696641efab71b", size = 8970, upload-time = "2025-09-07T06:22:08.135Z" },
 ]
 
 [[package]]
@@ -375,19 +384,21 @@ name = "ibproxy"
 version = "0.0.12"
 source = { editable = "." }
 dependencies = [
-    { name = "bump2version" },
+    { name = "bs4" },
     { name = "curlify2" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "ibauth" },
-    { name = "pre-commit" },
+    { name = "pydantic" },
     { name = "tenacity" },
     { name = "uvicorn" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "bump2version" },
     { name = "mypy" },
+    { name = "pre-commit" },
     { name = "ruff" },
 ]
 test = [
@@ -401,19 +412,21 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "bump2version", specifier = ">=1.0.1" },
+    { name = "bs4", specifier = ">=0.0.2" },
     { name = "curlify2", specifier = ">=2.0.0" },
     { name = "fastapi", specifier = ">=0.116.1" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "ibauth", specifier = ">=0.0.7" },
-    { name = "pre-commit", specifier = ">=4.3.0" },
+    { name = "ibauth", specifier = ">=0.0.8" },
+    { name = "pydantic", specifier = ">=2.11.7" },
     { name = "tenacity", specifier = ">=9.1.2" },
     { name = "uvicorn", specifier = ">=0.35.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "bump2version", specifier = ">=1.0.1" },
     { name = "mypy", specifier = ">=1.16.0" },
+    { name = "pre-commit", specifier = ">=4.3.0" },
     { name = "ruff", specifier = ">=0.12.11" },
 ]
 test = [
@@ -799,6 +812,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a2/87/a6771e1546d97e7e041b6ae58d80074f81b7d5121207425c964ddf5cfdbd/sniffio-1.3.1.tar.gz", hash = "sha256:f4324edc670a0f49750a81b895f35c3adb843cca46f0530f79fc1babb23789dc", size = 20372, upload-time = "2024-02-25T23:20:04.057Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl", hash = "sha256:2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2", size = 10235, upload-time = "2024-02-25T23:20:01.196Z" },
+]
+
+[[package]]
+name = "soupsieve"
+version = "2.8"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/6d/e6/21ccce3262dd4889aa3332e5a119a3491a95e8f60939870a3a035aabac0d/soupsieve-2.8.tar.gz", hash = "sha256:e2dd4a40a628cb5f28f6d4b0db8800b8f581b65bb380b97de22ba5ca8d72572f", size = 103472, upload-time = "2025-08-27T15:39:51.78Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/14/a0/bb38d3b76b8cae341dad93a2dd83ab7462e6dbcdd84d43f54ee60a8dc167/soupsieve-2.8-py3-none-any.whl", hash = "sha256:0cc76456a30e20f5d7f2e14a98a4ae2ee4e5abdc7c5ea0aafe795f344bc7984c", size = 36679, upload-time = "2025-08-27T15:39:50.179Z" },
 ]
 
 [[package]]

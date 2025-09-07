@@ -21,6 +21,9 @@ from ibauth.timing import timing
 
 from . import rate
 from .const import API_HOST, API_PORT, DATETIME_FMT, HEADERS, JOURNAL_DIR, VERSION
+from .models import Health
+from .status import get_system_status
+from .status import router as status_router
 from .util import logging_level
 
 LOGGING_CONFIG_PATH = Path(__file__).parent / "logging" / "logging.yaml"
@@ -59,6 +62,9 @@ async def tickle_loop() -> None:
         return
 
     while True:
+        status = await get_system_status()
+        logging.info(f"IBKR status: {status.colour} {status.label}")
+
         sleep: float = TICKLE_INTERVAL
         if auth is not None:
             try:
@@ -68,7 +74,7 @@ async def tickle_loop() -> None:
                 else:
                     # Only tickle if there have been no recent API requests.
                     #
-                    # TODO: Should probably on consider successful requests since
+                    # TODO: Should probably just consider successful requests since
                     # TODO: unsuccessful requests probably don't keep session open.
                     #
                     # When was the latest API request? If there was a recent API
@@ -87,6 +93,7 @@ async def tickle_loop() -> None:
                         auth.tickle()
             except Exception as e:
                 logging.error(f"Tickle failed: {e}")
+
         logging.debug(f"⏰ Sleep: {sleep:.1f} s")
         await asyncio.sleep(sleep)
 
@@ -110,12 +117,23 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="IBKR Proxy Service", version=VERSION, lifespan=lifespan)
 
+app.include_router(status_router, prefix="/status", tags=["system"])
 
-@app.get("/health", tags=["system"])  # type: ignore[misc]
-async def health() -> dict[str, str]:
+
+@app.get(
+    "/health",
+    tags=["system"],
+    summary="Proxy Health Check",
+    description="Retrieve the health status of the proxy.",
+    response_model=Health,
+)  # type: ignore[misc]
+async def health() -> Health:
     if auth is not None and getattr(auth, "bearer_token", None):
-        return {"status": "ok"}
-    return {"status": "degraded"}
+        result = {"status": "ok"}
+    else:
+        result = {"status": "degraded"}
+
+    return Health(**result)
 
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])  # type: ignore[misc]

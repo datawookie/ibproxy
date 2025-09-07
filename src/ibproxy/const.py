@@ -13,3 +13,5 @@ HEADERS: dict[str, str] = {}
 JOURNAL_DIR = Path("./journal/")
 
 DATETIME_FMT = "%Y-%m-%d %H:%M:%S"
+
+STATUS_URL = "https://www.interactivebrokers.co.uk/en/software/systemStatus.php"

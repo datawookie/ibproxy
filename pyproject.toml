@@ -2,21 +2,29 @@
 name = "ibproxy"
 version = "0.0.12"
 description = "A proxy service for the Interactive Brokers API"
+authors = [
+  {name = "Andrew Collier"}
+]
+maintainers = [
+  {name = "Andrew Collier"}
+]
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.116.1",
     "uvicorn>=0.35.0",
-    "ibauth>=0.0.7",
-    "bump2version>=1.0.1",
-    "pre-commit>=4.3.0",
+    "ibauth>=0.0.8",
     "httpx>=0.28.1",
     "curlify2>=2.0.0",
     "tenacity>=9.1.2",
+    "bs4>=0.0.2",
+    "pydantic>=2.11.7",
 ]
 
 [dependency-groups]
 dev = [
+    "bump2version>=1.0.1",
+    "pre-commit>=4.3.0",
     "mypy>=1.16.0",
     "ruff>=0.12.11",
 ]
