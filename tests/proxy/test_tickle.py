@@ -1,6 +1,8 @@
 import asyncio
 import logging
 import time
+from typing import Iterator
+from unittest.mock import Mock
 
 import pytest
 
@@ -25,6 +27,16 @@ class DummyAuthFlaky:
         if not self.raised:
             self.raised = True
             raise RuntimeError("boom")
+
+
+async def empty_status():
+    return Mock(colour="", label="")
+
+
+@pytest.fixture(autouse=True)
+def noop_get_system_status(monkeypatch) -> Iterator[None]:
+    monkeypatch.setattr(appmod, "get_system_status", empty_status)
+    yield
 
 
 @pytest.mark.asyncio
