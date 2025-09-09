@@ -128,10 +128,12 @@ app.include_router(status_router, prefix="/status", tags=["system"])
     response_model=Health,
 )  # type: ignore[misc]
 async def health() -> Health:
-    if auth is not None and getattr(auth, "bearer_token", None):
-        result = {"status": "ok"}
-    else:
-        result = {"status": "degraded"}
+    result = {"status": "degraded"}
+    if auth is not None:
+        if not auth.authenticated:
+            result = {"status": "not authenticated"}
+        elif getattr(auth, "bearer_token", None):
+            result = {"status": "ok"}
 
     return Health(**result)
 

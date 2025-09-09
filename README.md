@@ -105,3 +105,9 @@ If you are testing changes to `ibauth` then you can install a local copy.
 
 2. `uv lock --upgrade`
 3. `uv sync`
+
+You can also set this up in one quick move:
+
+```bash
+uv add --editable ../ibauth
+```
