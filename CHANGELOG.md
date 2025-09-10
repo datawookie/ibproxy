@@ -1,5 +1,11 @@
 # Change Log
 
+## [0.0.14] - 2025-09-10
+
+- Add timeout on call to `get_system_status()`.
+- More robust implementation of tickle loop.
+- Update to `ibauth` v0.0.9.
+
 ## [0.0.13] - 2025-09-07
 
 - Get IBKR status.
