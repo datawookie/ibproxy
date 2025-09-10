@@ -78,7 +78,7 @@ async def status() -> SystemStatus:
     return await get_system_status()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     import asyncio
 
     status = asyncio.run(get_system_status())
