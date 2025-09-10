@@ -61,26 +61,19 @@ async def tickle_loop() -> None:
         logging.warning("⛔ Tickle loop disabled.")
         return
 
+    logging.info("⏰ Tickle loop starting (mode=%s)", TICKLE_MODE)
     while True:
-        status = await get_system_status()
-        logging.info(f"IBKR status: {status.colour} {status.label}")
-
         sleep: float = TICKLE_INTERVAL
-        if auth is not None:
-            try:
+        try:
+            status = await get_system_status()
+            logging.info("IBKR status: %s %s", status.colour, status.label)
+
+            if auth is not None:
                 if TICKLE_MODE == "always":
-                    # Always tickle on every interval.
                     auth.tickle()
                 else:
-                    # Only tickle if there have been no recent API requests.
-                    #
-                    # TODO: Should probably just consider successful requests since
-                    # TODO: unsuccessful requests probably don't keep session open.
-                    #
-                    # When was the latest API request? If there was a recent API
-                    # request then there is no reason to tickle.
                     if latest := rate.latest():
-                        logging.info(f"- Latest request: {datetime.fromtimestamp(latest).strftime(DATETIME_FMT)}")
+                        logging.info(" - Latest request: %s", datetime.fromtimestamp(latest).strftime(DATETIME_FMT))
                         delay = datetime.now().timestamp() - latest
                         if delay < TICKLE_INTERVAL:
                             logging.info("- Within tickle interval. No need to tickle again.")
@@ -89,12 +82,19 @@ async def tickle_loop() -> None:
                         else:
                             auth.tickle()
                     else:
-                        # There have been no recent API requests.
                         auth.tickle()
-            except Exception as e:
-                logging.error(f"Tickle failed: {e}")
+        except asyncio.CancelledError:
+            # Allow friendly shutdown to cancel the task.
+            logging.info("Tickle loop cancelled; exiting.")
+            raise
+        except Exception:
+            # Log the exception and continue the loop after a short delay.
+            logging.exception("Tickle iteration failed; will retry after short delay.")
+            # Backoff a bit so repeated failures don't spin the loop.
+            await asyncio.sleep(max(TICKLE_MIN_SLEEP, 1.0))
+            continue
 
-        logging.debug(f"⏰ Sleep: {sleep:.1f} s")
+        logging.debug("⏰ Sleep: %.1f s", sleep)
         await asyncio.sleep(sleep)
 
 
