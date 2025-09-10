@@ -30,7 +30,7 @@ class DummyAuthFlaky:
 
 
 async def empty_status():
-    return Mock(colour="", label="")
+    return Mock(colour="<>", label="<label>")
 
 
 @pytest.fixture(autouse=True)
@@ -67,22 +67,23 @@ async def test_tickle_loop_calls_auth(monkeypatch):
 async def test_tickle_loop_logs_error(monkeypatch, caplog):
     monkeypatch.setattr(appmod, "TICKLE_INTERVAL", 0.01)
     monkeypatch.setattr(appmod, "TICKLE_MIN_SLEEP", 0.001)
-
-    # force latest to None so tickle() is invoked
-    monkeypatch.setattr(appmod.rate, "latest", lambda: None)
+    monkeypatch.setattr(appmod, "TICKLE_MODE", "always")
 
     dummy = DummyAuthFlaky()
     monkeypatch.setattr(appmod, "auth", dummy)
 
-    caplog.set_level(logging.ERROR)
+    caplog.set_level(logging.DEBUG)
     task = asyncio.create_task(appmod.tickle_loop())
-    await asyncio.sleep(0.04)
+    await asyncio.sleep(0.05)
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await task
 
-    # an error should have been logged during the first failing tickle
-    assert any("Tickle failed:" in rec.message for rec in caplog.records)
+    print("=====================================")
+    print(caplog.text)
+
+    # Error should have been logged during the first (failing) tickle.
+    assert any("Tickle failed." in rec.message for rec in caplog.records)
     # tickle was attempted multiple times (first raised, subsequent success)
     assert dummy.calls >= 2
 

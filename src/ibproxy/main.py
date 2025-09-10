@@ -66,7 +66,12 @@ async def tickle_loop() -> None:
         sleep: float = TICKLE_INTERVAL
         try:
             status = await get_system_status()
-            logging.info("IBKR status: %s %s", status.colour, status.label)
+            try:
+                status = await asyncio.wait_for(get_system_status(), timeout=10.0)
+            except asyncio.TimeoutError:
+                logging.warning("🚧 IBKR status timed out!")
+            else:
+                logging.info("IBKR status: %s %s", status.colour, status.label)
 
             if auth is not None:
                 if TICKLE_MODE == "always":
@@ -89,9 +94,10 @@ async def tickle_loop() -> None:
             raise
         except Exception:
             # Log the exception and continue the loop after a short delay.
-            logging.exception("Tickle iteration failed; will retry after short delay.")
+            logging.exception("Tickle failed. Will retry after short delay.")
             # Backoff a bit so repeated failures don't spin the loop.
-            await asyncio.sleep(max(TICKLE_MIN_SLEEP, 1.0))
+            # TODO: Use tenacity to implement the retry with backoff.
+            await asyncio.sleep(TICKLE_MIN_SLEEP)
             continue
 
         logging.debug("⏰ Sleep: %.1f s", sleep)
@@ -104,7 +110,18 @@ async def tickle_loop() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     global tickle
+
+    def _tickle_done(task: asyncio.Task[None]) -> None:
+        if task.cancelled():
+            logging.info("Tickle task was cancelled.")
+            return
+        error = task.exception()
+        if error:
+            logging.exception("Tickle task terminated with exception: %s", error)
+
     tickle = asyncio.create_task(tickle_loop())
+    tickle.add_done_callback(_tickle_done)
+
     yield
     tickle.cancel()
     try:
