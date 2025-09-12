@@ -1,5 +1,10 @@
 # Change Log
 
+## [0.0.15] - 2025-09-12
+
+- Add unique request ID.
+- Create separate module for `tickle_loop()`.
+
 ## [0.0.14] - 2025-09-10
 
 - Add timeout on call to `get_system_status()`.
