@@ -116,6 +116,8 @@ def test_proxy_forwards_and_strips_headers(client, monkeypatch, tmp_path) -> Non
     assert resp.status_code == 200
     assert resp.json() == {"ok": True}
 
+    request_id = resp.headers.get("X-Request-ID")
+
     assert "content-length" in resp.headers
     assert "content-encoding" not in resp.headers
     assert resp.headers["content-type"].startswith("application/json")
@@ -133,11 +135,10 @@ def test_proxy_forwards_and_strips_headers(client, monkeypatch, tmp_path) -> Non
     # Query params forwarded
     assert captured["params"] == {"x": "1"}
 
-    expected_file = tmp_path / "20250822" / "20250822-123456:789000.json.bz2"
+    expected_file = tmp_path / "20250822" / f"20250822-123456-{request_id}.json.bz2"
     assert expected_file.exists()
     with bz2.open(expected_file, "rt", encoding="utf-8") as fh:
         dump = json.load(fh)
-    print(dump)
     assert dump["request"]["url"].endswith("/v1/api/portfolio/DUH638336/summary")
     assert dump["request"]["params"] == {"x": "1"}
     assert dump["response"]["data"] == {"ok": True}
@@ -247,6 +248,9 @@ def test_upstream_500_results_in_502_and_logs(monkeypatch, client, caplog, tmp_p
     _make_mock_httpx(monkeypatch, status=503, body=ERROR_BODY)
 
     resp = client.get("/v1/api/portfolio/DUH638336/summary")
+
+    request_id = resp.headers.get("X-Request-ID")
+
     assert resp.status_code == 502
     body = resp.json()
     assert body.get("error") == "Upstream service error."
@@ -255,7 +259,7 @@ def test_upstream_500_results_in_502_and_logs(monkeypatch, client, caplog, tmp_p
 
     assert any("Upstream API error 503" in rec.message for rec in caplog.records)
 
-    expected_file = tmp_path / "20250829" / "20250829-150010:000000.json.bz2"
+    expected_file = tmp_path / "20250829" / f"20250829-150010-{request_id}.json.bz2"
     assert expected_file.exists()
     with bz2.open(expected_file, "rt", encoding="utf-8") as fh:
         dump = json.load(fh)

@@ -159,7 +159,9 @@ async def proxy(path: str, request: Request) -> Response:
         rps, period = rate.rate()
         logging.info(f"  - {rate.format(rps)} Hz / {rate.format(period)} s | (global)")
 
-        json_path = JOURNAL_DIR / (filename := now.strftime("%Y%m%d/%Y%m%d-%H%M%S:%f.json.bz2"))
+        json_path = JOURNAL_DIR / (
+            filename := now.strftime(f"%Y%m%d/%Y%m%d-%H%M%S-{request.state.request_id}.json.bz2")
+        )
         #
         json_path.parent.mkdir(parents=True, exist_ok=True)
 
