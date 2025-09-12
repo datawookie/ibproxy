@@ -36,6 +36,12 @@ if __name__ == "__main__":
         time.sleep(0.5)
 ```
 
+You can also hit the proxy from the command line:
+
+```bash
+curl http://127.0.0.1:9000/v1/api/iserver/accounts
+```
+
 ## Setup
 
 You need to have the following files in the local directory to enable the use of
@@ -111,3 +117,9 @@ You can also set this up in one quick move:
 ```bash
 uv add --editable ../ibauth
 ```
+
+## API Error Codes
+
+- `500` `Please query /accounts first`
+- `401` `not authenticated`
+- `400` `Bad Request: no bridge`

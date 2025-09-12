@@ -20,6 +20,7 @@ from ibauth.timing import timing
 
 from . import rate
 from .const import API_HOST, API_PORT, HEADERS, JOURNAL_DIR, VERSION
+from .middleware.request_id import RequestIdMiddleware
 from .models import Health
 from .status import router as status_router
 from .tickle import tickle_loop
@@ -78,6 +79,8 @@ app = FastAPI(title="IBKR Proxy Service", version=VERSION, lifespan=lifespan)
 
 app.include_router(status_router, prefix="/status", tags=["system"])
 
+app.add_middleware(RequestIdMiddleware)
+
 
 @app.get(
     "/health",
@@ -101,7 +104,7 @@ async def health() -> Health:
 async def proxy(path: str, request: Request) -> Response:
     method = request.method
     url = urljoin(f"https://{auth.domain}/", path)  # type: ignore[union-attr]
-    logging.info(f"🔵 Request: {method} {url}")
+    logging.info(f"🔵 Request: [{request.state.request_id}] {method} {url}")
 
     try:
         # Get body, parameters and headers from request.
@@ -177,6 +180,7 @@ async def proxy(path: str, request: Request) -> Response:
                 logging.info(f"💾 Dump: {filename}.")
                 dump = {
                     "request": {
+                        "id": request.state.request_id,
                         "url": url,
                         "method": method,
                         "headers": dict(response.request.headers),
