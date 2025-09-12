@@ -1,3 +1,4 @@
+import re
 from unittest.mock import patch
 
 import pytest
@@ -5,6 +6,8 @@ from fastapi import Request
 from fastapi.testclient import TestClient
 
 import ibproxy.main as ibproxy
+
+from .conftest import REQUEST_ID
 
 
 @pytest.mark.asyncio
@@ -21,7 +24,8 @@ async def test_proxy_logs_headers_and_params(mock_request, caplog, dummy_respons
         "query_string": b"foo=bar",
     }
     request = Request(scope)
-    request._body = b'{"x":1}'  # fastapi Request caches body, hack it in
+    request._body = b'{"x":1}'
+    request.state.request_id = REQUEST_ID
 
     caplog.set_level("DEBUG")
 
@@ -44,5 +48,5 @@ def test_proxy_logs_request(caplog, dummy_response):
         assert resp.status_code == 200
 
         logs = [rec.getMessage() for rec in caplog.records]
-        assert any("🔵 Request: GET" in m for m in logs)
+        assert any(re.match(r"🔵 Request: \[.*\] GET", m) for m in logs)
         assert any("✅ Return response." in m for m in logs)

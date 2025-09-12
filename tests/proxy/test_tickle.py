@@ -7,6 +7,7 @@ from unittest.mock import Mock
 import pytest
 
 import ibproxy.main as appmod
+import ibproxy.tickle as ticklemod
 
 
 class DummyAuthOK:
@@ -35,24 +36,23 @@ async def empty_status():
 
 @pytest.fixture(autouse=True)
 def noop_get_system_status(monkeypatch) -> Iterator[None]:
-    monkeypatch.setattr(appmod, "get_system_status", empty_status)
+    monkeypatch.setattr(ticklemod, "get_system_status", empty_status)
     yield
 
 
 @pytest.mark.asyncio
 async def test_tickle_loop_calls_auth(monkeypatch):
     # make ticks frequent for the test
-    monkeypatch.setattr(appmod, "TICKLE_INTERVAL", 0.01)
+    monkeypatch.setattr(ticklemod, "TICKLE_INTERVAL", 0.01)
     # ensure we don't busy-loop when remaining time is tiny
-    monkeypatch.setattr(appmod, "TICKLE_MIN_SLEEP", 0.001)
+    monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 
     # ensure rate.latest() returns None so tickle() is always called
     monkeypatch.setattr(appmod.rate, "latest", lambda: None)
 
-    dummy = DummyAuthOK()
-    monkeypatch.setattr(appmod, "auth", dummy)
+    auth = DummyAuthOK()
 
-    task = asyncio.create_task(appmod.tickle_loop())
+    task = asyncio.create_task(appmod.tickle_loop(auth))
     # give it a little time to run several iterations
     await asyncio.sleep(0.05)
     task.cancel()
@@ -60,51 +60,46 @@ async def test_tickle_loop_calls_auth(monkeypatch):
         await task
 
     # should have tickled multiple times
-    assert dummy.calls >= 2
+    assert auth.calls >= 2
 
 
 @pytest.mark.asyncio
 async def test_tickle_loop_logs_error(monkeypatch, caplog):
-    monkeypatch.setattr(appmod, "TICKLE_INTERVAL", 0.01)
-    monkeypatch.setattr(appmod, "TICKLE_MIN_SLEEP", 0.001)
-    monkeypatch.setattr(appmod, "TICKLE_MODE", "always")
+    monkeypatch.setattr(ticklemod, "TICKLE_INTERVAL", 0.01)
+    monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 
-    dummy = DummyAuthFlaky()
-    monkeypatch.setattr(appmod, "auth", dummy)
+    auth = DummyAuthFlaky()
 
     caplog.set_level(logging.DEBUG)
-    task = asyncio.create_task(appmod.tickle_loop())
+    task = asyncio.create_task(appmod.tickle_loop(auth))
     await asyncio.sleep(0.05)
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await task
 
-    print("=====================================")
-    print(caplog.text)
-
     # Error should have been logged during the first (failing) tickle.
     assert any("Tickle failed." in rec.message for rec in caplog.records)
     # tickle was attempted multiple times (first raised, subsequent success)
-    assert dummy.calls >= 2
+    assert auth.calls >= 2
 
 
 @pytest.mark.asyncio
 async def test_lifespan_starts_and_cancels(monkeypatch):
-    monkeypatch.setattr(appmod, "TICKLE_INTERVAL", 0.01)
-    monkeypatch.setattr(appmod, "TICKLE_MIN_SLEEP", 0.001)
+    monkeypatch.setattr(ticklemod, "TICKLE_INTERVAL", 0.01)
+    monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 
     # make latest None so the tickle loop will call auth.tickle()
     monkeypatch.setattr(appmod.rate, "latest", lambda: None)
 
-    dummy = DummyAuthOK()
-    monkeypatch.setattr(appmod, "auth", dummy)
+    auth = DummyAuthOK()
+    monkeypatch.setattr(appmod, "auth", auth)
 
     # entering the lifespan should create the task
     async with appmod.lifespan(appmod.app):
         assert isinstance(appmod.tickle, asyncio.Task)
         # allow the loop to run a few times
         await asyncio.sleep(0.03)
-        assert dummy.calls >= 1
+        assert auth.calls >= 1
 
     # after exiting lifespan the task should be cancelled or finished
     assert appmod.tickle.cancelled() or appmod.tickle.done()
@@ -116,25 +111,23 @@ async def test_tickle_auto_skips_when_latest_recent(monkeypatch, caplog):
     If rate.latest() returns a timestamp within TICKLE_INTERVAL seconds ago,
     the loop should log "Within tickle interval..." and NOT call auth.tickle().
     """
-    monkeypatch.setattr(appmod, "TICKLE_INTERVAL", 0.2)
-    monkeypatch.setattr(appmod, "TICKLE_MIN_SLEEP", 0.01)
-    monkeypatch.setattr(appmod, "TICKLE_MODE", "auto")
+    monkeypatch.setattr(ticklemod, "TICKLE_INTERVAL", 0.2)
+    monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.01)
 
-    latest = time.time() - (0.05 * appmod.TICKLE_INTERVAL)
+    latest = time.time() - (0.05 * ticklemod.TICKLE_INTERVAL)
     monkeypatch.setattr(appmod.rate, "latest", lambda: latest)
 
-    dummy = DummyAuthOK()
-    monkeypatch.setattr(appmod, "auth", dummy)
+    auth = DummyAuthOK()
 
-    task = asyncio.create_task(appmod.tickle_loop())
+    task = asyncio.create_task(appmod.tickle_loop(auth, "auto"))
     # Wait long enough for the loop to call tickle once.
     await asyncio.sleep(0.01)
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await task
 
-    # Because the last request was recent, tickle should NOT have been called
-    assert dummy.calls == 0
+    # Because the last request was recent, tickle should NOT have been called.
+    assert auth.calls == 0
 
 
 @pytest.mark.asyncio
@@ -143,17 +136,15 @@ async def test_tickle_auto_calls_when_latest_old(monkeypatch, caplog):
     If rate.latest() returns a timestamp older than TICKLE_INTERVAL, auth.tickle()
     should be invoked.
     """
-    monkeypatch.setattr(appmod, "TICKLE_INTERVAL", 0.05)
-    monkeypatch.setattr(appmod, "TICKLE_MIN_SLEEP", 0.001)
-    monkeypatch.setattr(appmod, "TICKLE_MODE", "auto")
+    monkeypatch.setattr(ticklemod, "TICKLE_INTERVAL", 0.05)
+    monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 
-    latest = time.time() - (appmod.TICKLE_INTERVAL + 0.02)
+    latest = time.time() - (ticklemod.TICKLE_INTERVAL + 0.02)
     monkeypatch.setattr(appmod.rate, "latest", lambda: latest)
 
-    dummy = DummyAuthOK()
-    monkeypatch.setattr(appmod, "auth", dummy)
+    auth = DummyAuthOK()
 
-    task = asyncio.create_task(appmod.tickle_loop())
+    task = asyncio.create_task(appmod.tickle_loop(auth, "auto"))
     # Wait long enough for the loop to call tickle once.
     await asyncio.sleep(0.2)
     task.cancel()
@@ -161,18 +152,19 @@ async def test_tickle_auto_calls_when_latest_old(monkeypatch, caplog):
         await task
 
     # Tickle should have been called at least once.
-    assert dummy.calls >= 1
+    assert auth.calls >= 1
 
 
 @pytest.mark.asyncio
 async def test_tickle_off(monkeypatch, caplog):
-    monkeypatch.setattr(appmod, "TICKLE_INTERVAL", 0.05)
-    monkeypatch.setattr(appmod, "TICKLE_MIN_SLEEP", 0.001)
-    monkeypatch.setattr(appmod, "TICKLE_MODE", "off")
+    monkeypatch.setattr(ticklemod, "TICKLE_INTERVAL", 0.05)
+    monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
+
+    auth = DummyAuthOK()
 
     caplog.set_level(logging.INFO)
 
-    task = asyncio.create_task(appmod.tickle_loop())
+    task = asyncio.create_task(appmod.tickle_loop(auth, "off"))
     # Wait long enough for the loop to call tickle once.
     await asyncio.sleep(0.2)
     task.cancel()
@@ -183,14 +175,12 @@ async def test_tickle_off(monkeypatch, caplog):
 
 @pytest.mark.asyncio
 async def test_tickle_always(monkeypatch, caplog):
-    monkeypatch.setattr(appmod, "TICKLE_INTERVAL", 0.05)
-    monkeypatch.setattr(appmod, "TICKLE_MIN_SLEEP", 0.001)
-    monkeypatch.setattr(appmod, "TICKLE_MODE", "always")
+    monkeypatch.setattr(ticklemod, "TICKLE_INTERVAL", 0.05)
+    monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 
-    dummy = DummyAuthOK()
-    monkeypatch.setattr(appmod, "auth", dummy)
+    auth = DummyAuthOK()
 
-    task = asyncio.create_task(appmod.tickle_loop())
+    task = asyncio.create_task(appmod.tickle_loop(auth, "always"))
     # Wait long enough for the loop to call tickle once.
     await asyncio.sleep(0.2)
     task.cancel()
@@ -198,4 +188,4 @@ async def test_tickle_always(monkeypatch, caplog):
         await task
 
     # Tickle should have been called at least once.
-    assert dummy.calls >= 1
+    assert auth.calls >= 1

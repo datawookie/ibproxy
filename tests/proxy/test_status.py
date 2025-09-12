@@ -62,4 +62,4 @@ def test_status_endpoint(monkeypatch):
     client = TestClient(app)
     response = client.get("/status")
     assert response.status_code == 200
-    assert response.json() == dummy_status.dict()
+    assert response.json() == dummy_status.model_dump()

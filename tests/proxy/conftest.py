@@ -6,6 +6,8 @@ from fastapi.testclient import TestClient
 
 import ibproxy.main as appmod
 
+REQUEST_ID = "test-req-id"
+
 
 @pytest.fixture
 def client(monkeypatch) -> TestClient:
