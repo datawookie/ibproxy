@@ -1,8 +1,8 @@
 import asyncio
 import logging
 import time
-from typing import Iterator
-from unittest.mock import Mock
+from typing import Any, Iterator
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -35,8 +35,22 @@ async def empty_status():
 
 
 @pytest.fixture(autouse=True)
-def noop_get_system_status(monkeypatch) -> Iterator[None]:
+def noop_get_system_status(monkeypatch: Any, request: pytest.FixtureRequest) -> Iterator[None]:
+    """
+    Use @pytest.mark.disable_noop_get_system_status if you want the original _connect().
+    """
+    if request.node.get_closest_marker("disable_noop_get_system_status"):
+        yield
+        return
+
     monkeypatch.setattr(ticklemod, "get_system_status", empty_status)
+    yield
+
+
+@pytest.fixture
+def timeout_get_system_status(monkeypatch: Any) -> Iterator[None]:
+    mock = AsyncMock(side_effect=asyncio.TimeoutError("TimeoutError: Because even Python has limits on patience."))
+    monkeypatch.setattr(ticklemod, "get_system_status", mock)
     yield
 
 
@@ -186,6 +200,27 @@ async def test_tickle_always(monkeypatch, caplog):
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await task
+
+    # Tickle should have been called at least once.
+    assert auth.calls >= 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.disable_noop_get_system_status
+async def test_tickle_status_timeout(timeout_get_system_status, monkeypatch, caplog):
+    monkeypatch.setattr(ticklemod, "TICKLE_INTERVAL", 0.05)
+    monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
+
+    auth = DummyAuthOK()
+
+    task = asyncio.create_task(appmod.tickle_loop(auth, "always"))
+    # Wait long enough for the loop to call tickle once.
+    await asyncio.sleep(0.2)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert any("IBKR status timed out!" in rec.message for rec in caplog.records)
 
     # Tickle should have been called at least once.
     assert auth.calls >= 1

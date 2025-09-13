@@ -64,6 +64,7 @@ addopts = [
 markers = [
   "integration: Tests that require a running ibproxy.",
   "seldom: Tests that hit endpoints that have a slow rate limit.",
+  "disable_noop_get_system_status: Disable patching of get_system_status() for this test.",
 ]
 
 [tool.ruff]
