@@ -255,6 +255,7 @@ def main() -> None:
 
     if args.debug:
         LOGGING_CONFIG["root"]["level"] = "DEBUG"  # pragma: no cover
+        LOGGING_CONFIG["loggers"]["ibauth"]["level"] = "DEBUG"  # pragma: no cover
 
     logging.config.dictConfig(LOGGING_CONFIG)
 
