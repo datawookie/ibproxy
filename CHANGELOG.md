@@ -1,5 +1,10 @@
 # Change Log
 
+## [0.0.16] - 2025-09-13
+
+- Update to `ibauth` v0.0.11.
+- Journal filename embeds request ID.
+
 ## [0.0.15] - 2025-09-12
 
 - Add unique request ID.
