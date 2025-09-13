@@ -3,7 +3,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
 import pytest
@@ -12,6 +12,7 @@ from freezegun import freeze_time
 import ibproxy.const as constmod
 import ibproxy.main as appmod
 import ibproxy.rate as ratemod
+from ibproxy.status import STATUS_COLOURS
 
 
 class _MockAuth:
@@ -202,9 +203,12 @@ def test_proxy_handles_request_error(client, monkeypatch) -> None:
 @patch("ibproxy.main.uvicorn.run")
 @patch("ibproxy.main.ibauth.auth_from_yaml")
 @patch("ibproxy.main.argparse.ArgumentParser.parse_args")
-def test_main_runs_with_auth_and_uvicorn(mock_parse_args, mock_auth_from_yaml, mock_uvicorn) -> None:
+@patch("ibproxy.tickle.get_system_status", new_callable=AsyncMock)
+def test_main_runs_with_auth_and_uvicorn(mock_get_status, mock_parse_args, mock_auth_from_yaml, mock_uvicorn) -> None:
+    mock_get_status.return_value = STATUS_COLOURS["#66cc33"]
+
     # Pretend --debug not passed.
-    mock_parse_args.return_value = Mock(debug=False, port=constmod.API_PORT)
+    mock_parse_args.return_value = Mock(debug=False, port=constmod.API_PORT, config="config.yaml")
 
     # Fake auth object with methods.
     auth = Mock()

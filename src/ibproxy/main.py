@@ -4,6 +4,7 @@ import bz2
 import json
 import logging
 import logging.config
+import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -23,7 +24,7 @@ from .const import API_HOST, API_PORT, HEADERS, JOURNAL_DIR, VERSION
 from .middleware.request_id import RequestIdMiddleware
 from .models import Health
 from .status import router as status_router
-from .tickle import tickle_loop
+from .tickle import log_status, tickle_loop
 from .util import logging_level
 
 LOGGING_CONFIG_PATH = Path(__file__).parent / "logging" / "logging.yaml"
@@ -237,6 +238,9 @@ def main() -> None:
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--debug", action="store_true", help="Debugging mode.")
+    parser.add_argument(
+        "--config", type=str, default="config.yaml", help="Path to the configuration file (default: config.yaml)."
+    )
     parser.add_argument("--port", type=int, default=None, help=f"Port to run the API server on (default: {API_PORT}).")
     parser.add_argument(
         "--tickle-mode",
@@ -254,7 +258,12 @@ def main() -> None:
 
     logging.config.dictConfig(LOGGING_CONFIG)
 
-    auth = ibauth.auth_from_yaml("config.yaml")
+    asyncio.run(log_status())
+    try:
+        auth = ibauth.auth_from_yaml(args.config)
+    except Exception:
+        logging.error("🚨 Authentication failed!")
+        sys.exit(1)
 
     global TICKLE_MODE
     TICKLE_MODE = args.tickle_mode

@@ -1,5 +1,5 @@
-privatekey.pem
-config.yaml
+*.pem
+*.yaml
 __pycache__
 *.log
 *.code-workspace
