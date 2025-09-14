@@ -33,3 +33,25 @@ def fake_auth(monkeypatch):
     fake = SimpleNamespace(domain="api.test", bearer_token="token123")
     monkeypatch.setattr("ibproxy.main.auth", fake)
     return fake
+
+
+class DummyAuth:
+    def __init__(self, authenticated=True):
+        self.bearer_token = "abc123"
+        self.authenticated = authenticated
+        self.calls = 0
+
+    def tickle(self):
+        self.calls += 1
+
+
+class DummyAuthFlaky(DummyAuth):
+    def __init__(self):
+        super().__init__()
+        self.raised = False
+
+    def tickle(self):
+        self.calls += 1
+        if not self.raised:
+            self.raised = True
+            raise RuntimeError("boom")

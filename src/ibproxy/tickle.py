@@ -52,10 +52,6 @@ async def tickle_loop(auth: Optional[ibauth.IBAuth], mode: Optional[str] = "alwa
                             auth.tickle()
                     else:
                         auth.tickle()
-        except asyncio.CancelledError:
-            # Allow friendly shutdown to cancel the task.
-            logging.info("Tickle loop cancelled; exiting.")
-            raise
         except Exception:
             # Log the exception and continue the loop after a short delay.
             logging.exception("Tickle failed. Will retry after short delay.")

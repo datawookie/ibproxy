@@ -9,25 +9,7 @@ import pytest
 import ibproxy.main as appmod
 import ibproxy.tickle as ticklemod
 
-
-class DummyAuthOK:
-    def __init__(self):
-        self.calls = 0
-
-    def tickle(self):
-        self.calls += 1
-
-
-class DummyAuthFlaky:
-    def __init__(self):
-        self.calls = 0
-        self.raised = False
-
-    def tickle(self):
-        self.calls += 1
-        if not self.raised:
-            self.raised = True
-            raise RuntimeError("boom")
+from .conftest import DummyAuth, DummyAuthFlaky
 
 
 async def empty_status():
@@ -64,7 +46,7 @@ async def test_tickle_loop_calls_auth(monkeypatch):
     # ensure rate.latest() returns None so tickle() is always called
     monkeypatch.setattr(appmod.rate, "latest", lambda: None)
 
-    auth = DummyAuthOK()
+    auth = DummyAuth()
 
     task = asyncio.create_task(appmod.tickle_loop(auth))
     # give it a little time to run several iterations
@@ -105,7 +87,7 @@ async def test_lifespan_starts_and_cancels(monkeypatch):
     # make latest None so the tickle loop will call auth.tickle()
     monkeypatch.setattr(appmod.rate, "latest", lambda: None)
 
-    auth = DummyAuthOK()
+    auth = DummyAuth()
     monkeypatch.setattr(appmod, "auth", auth)
 
     # entering the lifespan should create the task
@@ -115,8 +97,31 @@ async def test_lifespan_starts_and_cancels(monkeypatch):
         await asyncio.sleep(0.03)
         assert auth.calls >= 1
 
-    # after exiting lifespan the task should be cancelled or finished
     assert appmod.tickle.cancelled() or appmod.tickle.done()
+
+
+@pytest.mark.asyncio
+async def test_lifespan_tickle_exception(monkeypatch, caplog):
+    """
+    This is testing important functionality. If the tickle loop dies then we
+    want to know about it.
+    """
+    caplog.set_level(logging.INFO)
+
+    async def explode(*args, **kwargs):
+        raise RuntimeError("Boom")
+
+    monkeypatch.setattr(appmod, "tickle_loop", explode)
+
+    monkeypatch.setattr(appmod.rate, "latest", lambda: None)
+
+    async with appmod.lifespan(appmod.app):
+        assert isinstance(appmod.tickle, asyncio.Task)
+        await asyncio.sleep(0.03)
+
+    print([rec.message for rec in caplog.records])
+
+    assert any("Tickle task terminated with exception: Boom" in rec.message for rec in caplog.records)
 
 
 @pytest.mark.asyncio
@@ -131,7 +136,7 @@ async def test_tickle_auto_skips_when_latest_recent(monkeypatch, caplog):
     latest = time.time() - (0.05 * ticklemod.TICKLE_INTERVAL)
     monkeypatch.setattr(appmod.rate, "latest", lambda: latest)
 
-    auth = DummyAuthOK()
+    auth = DummyAuth()
 
     task = asyncio.create_task(appmod.tickle_loop(auth, "auto"))
     # Wait long enough for the loop to call tickle once.
@@ -156,7 +161,7 @@ async def test_tickle_auto_calls_when_latest_old(monkeypatch, caplog):
     latest = time.time() - (ticklemod.TICKLE_INTERVAL + 0.02)
     monkeypatch.setattr(appmod.rate, "latest", lambda: latest)
 
-    auth = DummyAuthOK()
+    auth = DummyAuth()
 
     task = asyncio.create_task(appmod.tickle_loop(auth, "auto"))
     # Wait long enough for the loop to call tickle once.
@@ -174,7 +179,7 @@ async def test_tickle_off(monkeypatch, caplog):
     monkeypatch.setattr(ticklemod, "TICKLE_INTERVAL", 0.05)
     monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 
-    auth = DummyAuthOK()
+    auth = DummyAuth()
 
     caplog.set_level(logging.INFO)
 
@@ -192,7 +197,7 @@ async def test_tickle_always(monkeypatch, caplog):
     monkeypatch.setattr(ticklemod, "TICKLE_INTERVAL", 0.05)
     monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 
-    auth = DummyAuthOK()
+    auth = DummyAuth()
 
     task = asyncio.create_task(appmod.tickle_loop(auth, "always"))
     # Wait long enough for the loop to call tickle once.
@@ -211,7 +216,7 @@ async def test_tickle_status_timeout(timeout_get_system_status, monkeypatch, cap
     monkeypatch.setattr(ticklemod, "TICKLE_INTERVAL", 0.05)
     monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 
-    auth = DummyAuthOK()
+    auth = DummyAuth()
 
     task = asyncio.create_task(appmod.tickle_loop(auth, "always"))
     # Wait long enough for the loop to call tickle once.

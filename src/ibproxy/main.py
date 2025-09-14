@@ -70,7 +70,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     tickle.cancel()
     try:
         await tickle
-    except asyncio.CancelledError:
+    except:
+        # Normally this will be triggered by asyncio.CancelledError in the
+        # tickle loop. But if something breaks then the exception should be
+        # logged in the done callback (and we also end up here).
+        #
+        # Will be called after the done callback has run.
         pass
 
 
