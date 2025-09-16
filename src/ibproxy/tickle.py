@@ -16,11 +16,12 @@ TICKLE_MIN_SLEEP = 5
 
 
 async def log_status() -> None:
-    # status = await get_system_status()
     try:
         status = await asyncio.wait_for(get_system_status(), timeout=10.0)
     except asyncio.TimeoutError:
         logging.warning("🚧 IBKR status timed out!")
+    except RuntimeError as error:
+        logging.error(error)
     else:
         logging.info("IBKR status: %s %s", status.colour, status.label)
 

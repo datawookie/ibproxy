@@ -63,3 +63,14 @@ def test_status_endpoint(monkeypatch):
     response = client.get("/status")
     assert response.status_code == 200
     assert response.json() == dummy_status.model_dump()
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_get_system_status_failed():
+    from ibproxy.const import STATUS_URL
+
+    respx.get(STATUS_URL).mock(return_value=Response(200, content=""))
+
+    with pytest.raises(RuntimeError, match="Failed to parse IBKR status page"):
+        await get_system_status()

@@ -2,7 +2,7 @@ import re
 
 import httpx
 from bs4 import BeautifulSoup
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from .const import STATUS_URL
 from .models import SystemStatus
@@ -26,11 +26,40 @@ async def get_system_status() -> SystemStatus:
     soup = BeautifulSoup(response.text, "html.parser")
 
     # Get system availability table.
-    availability = soup.find("td", string=re.compile("System Availability")).parent.parent
+    #
+    # Layout of relevant part of status page:
+    #
+    # <table>
+    #     <tbody>
+    #         <tr>
+    #             <td>System Availability</td>
+    #         </tr>
+    #         <tr>
+    #             <td>Stat</td>
+    #             <td>Message</td>
+    #             <td>Created/Updated</td>
+    #         </tr>
+    #         <tr class="odd">
+    #             <td class="centeritem" style="background-color:#66cc33">&nbsp;</td>
+    #             <td><strong>No problems</strong><br>No problems reported at this time.</td>
+    #             <td class="centeritem">
+    #                 2025/09/16<br>
+    #                 2025/09/16
+    #             </td>
+    #         </tr>
+    #     </tbody>
+    # </table>
+    #
+    try:
+        # Other tables on the page. Most reliable way to find the right one.
+        #
+        availability = soup.find("td", string=re.compile("System Availability")).parent.parent
 
-    colour = availability.select_one("tr.odd > td.centeritem[style]")["style"].split(":")[-1].strip()
+        colour = availability.select_one("tr.odd > td.centeritem[style]")["style"].split(":")[-1].strip()
 
-    return STATUS_COLOURS[colour]
+        return STATUS_COLOURS[colour]
+    except AttributeError as error:
+        raise RuntimeError("🚨 Failed to parse IBKR status page!") from error
 
 
 @router.get(
@@ -75,7 +104,10 @@ async def get_system_status() -> SystemStatus:
     },
 )  # type: ignore[misc]
 async def status() -> SystemStatus:
-    return await get_system_status()
+    try:
+        return await get_system_status()
+    except RuntimeError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
 
 
 if __name__ == "__main__":  # pragma: no cover
