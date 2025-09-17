@@ -27,6 +27,14 @@ async def log_status() -> None:
         logging.info("IBKR status: %s %s", status.colour, status.label)
 
 
+async def tickle(auth: ibauth.IBAuth) -> None:
+    """
+    The .tickle() method is blocking, so run it in a thread.
+    """
+    # TODO: Refactor ibauth so that it's async?
+    await asyncio.to_thread(auth.tickle)
+
+
 async def tickle_loop(auth: Optional[ibauth.IBAuth], mode: Optional[str] = "always") -> None:
     """Periodically call auth.tickle() while the app is running."""
     if mode == "off":
@@ -41,7 +49,7 @@ async def tickle_loop(auth: Optional[ibauth.IBAuth], mode: Optional[str] = "alwa
 
             if auth is not None:
                 if mode == "always":
-                    auth.tickle()
+                    await tickle(auth)
                 else:
                     if latest := rate.latest():
                         logging.info(" - Latest request: %s", datetime.fromtimestamp(latest).strftime(DATETIME_FMT))
@@ -51,15 +59,12 @@ async def tickle_loop(auth: Optional[ibauth.IBAuth], mode: Optional[str] = "alwa
                             sleep -= delay
                             sleep = max(sleep, TICKLE_MIN_SLEEP)
                         else:
-                            auth.tickle()
+                            await tickle(auth)
                     else:
-                        auth.tickle()
+                        await tickle(auth)
         except Exception:
-            # Log the exception and continue the loop after a short delay.
-            logging.exception("Tickle failed. Will retry after short delay.")
+            logging.error("🚨 Tickle failed. Will retry after short delay.")
             # Backoff a bit so repeated failures don't spin the loop.
-            # TODO: Use tenacity to implement the retry with backoff.
-            # TODO: How will tenacity work in async code?
             await asyncio.sleep(TICKLE_MIN_SLEEP)
             continue
 

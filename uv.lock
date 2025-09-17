@@ -388,7 +388,7 @@ wheels = [
 
 [[package]]
 name = "ibauth"
-version = "0.0.11"
+version = "0.0.12"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
@@ -399,9 +399,9 @@ dependencies = [
     { name = "requests" },
     { name = "tenacity" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5a/d3/5ef27ea80e9497dc0ed120cc1b923a2b7e6c09670ea068ba519dcc46fb39/ibauth-0.0.11.tar.gz", hash = "sha256:803a53eebef975e00aaf7b9d0d5d3ca5c03611b1c511825bce399ae6e3f04370", size = 21560, upload-time = "2025-09-13T06:42:41.639Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/63/50/2148eb73c252ee89418cdf05064eeeccba88e9ccea8be5044e34c7c74b85/ibauth-0.0.12.tar.gz", hash = "sha256:c367e2adb5454dd41c25a7f2de3ca085b0279346890c021cfd273ec99a4f79fe", size = 22688, upload-time = "2025-09-17T16:42:25.673Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/69/e0/d1de0b09ece63b4b64fec83fdc24545187aecd6179f595ad8c6dca0f2206/ibauth-0.0.11-py3-none-any.whl", hash = "sha256:c927a6a8c02da4265baafd0fe8da636f79724375b4c7d95f2e62f3331cd642f1", size = 13827, upload-time = "2025-09-13T06:42:40.38Z" },
+    { url = "https://files.pythonhosted.org/packages/41/cb/405cc8335ff66dcce98e4ffba51a0cdc52ab79783cb61da69a11eb91fb16/ibauth-0.0.12-py3-none-any.whl", hash = "sha256:4be3f9e54dc64783f2b3ce439dfa75a784ef1988692467b8b1a28d500accd31b", size = 14978, upload-time = "2025-09-17T16:42:22.933Z" },
 ]
 
 [[package]]
@@ -415,7 +415,6 @@ dependencies = [
     { name = "httpx" },
     { name = "ibauth" },
     { name = "pydantic" },
-    { name = "tenacity" },
     { name = "uvicorn" },
 ]
 
@@ -442,9 +441,8 @@ requires-dist = [
     { name = "curlify2", specifier = ">=2.0.0" },
     { name = "fastapi", specifier = ">=0.116.1" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "ibauth", specifier = ">=0.0.11" },
+    { name = "ibauth", specifier = ">=0.0.12" },
     { name = "pydantic", specifier = ">=2.11.7" },
-    { name = "tenacity", specifier = ">=9.1.2" },
     { name = "uvicorn", specifier = ">=0.35.0" },
 ]
 
