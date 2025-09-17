@@ -18,9 +18,17 @@ STATUS_COLOURS = {
 }
 
 
-async def get_system_status() -> SystemStatus:
+async def get_system_status(timeout: float = 10) -> SystemStatus:
+    """
+    Retrieve the current system status from the IBKR status page.
+
+    Raises:
+        httpx.ConnectTimeout: If the request to the status page times out.
+        RuntimeError: If the status page cannot be parsed.
+    """
+
     async with httpx.AsyncClient() as client:
-        response = await client.get(STATUS_URL)
+        response = await client.get(STATUS_URL, timeout=timeout)
         response.raise_for_status()
 
     soup = BeautifulSoup(response.text, "html.parser")

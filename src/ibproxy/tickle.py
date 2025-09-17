@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 from typing import Optional
 
+import httpx
 import ibauth
 
 from . import rate
@@ -18,7 +19,7 @@ TICKLE_MIN_SLEEP = 5
 async def log_status() -> None:
     try:
         status = await asyncio.wait_for(get_system_status(), timeout=10.0)
-    except asyncio.TimeoutError:
+    except (asyncio.TimeoutError, httpx.ConnectTimeout):
         logging.warning("🚧 IBKR status timed out!")
     except RuntimeError as error:
         logging.error(error)

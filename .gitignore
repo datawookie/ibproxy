@@ -7,3 +7,4 @@ ibproxy.egg-info/
 *.json
 journal
 .coverage
+*.bz2
