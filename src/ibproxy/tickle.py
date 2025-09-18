@@ -32,7 +32,8 @@ async def tickle(auth: ibauth.IBAuth) -> None:
     The .tickle() method is blocking, so run it in a thread.
     """
     # TODO: Refactor ibauth so that it's async?
-    await asyncio.to_thread(auth.tickle)
+    # await asyncio.to_thread(auth.tickle)
+    await auth.tickle()
 
 
 async def tickle_loop(auth: Optional[ibauth.IBAuth], mode: Optional[str] = "always") -> None:

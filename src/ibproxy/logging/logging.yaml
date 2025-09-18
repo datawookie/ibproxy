@@ -34,3 +34,4 @@ loggers:
   urllib3:    {level: WARNING}
   ibauth:     {level: INFO}
   uvicorn.access: {level: WARNING}
+  uvicorn.error: {level: WARNING}
