@@ -42,9 +42,17 @@ async def tickle_loop(auth: Optional[ibauth.IBAuth], mode: Optional[str] = "alwa
         logging.warning("⛔ Tickle loop disabled.")
         return
 
-    logging.info("⏰ Tickle loop starting (mode=%s)", mode)
+    # Initial value for interval between tickles.
+    sleep: float = TICKLE_INTERVAL
+
+    logging.info("⏰ Start tickle loop (mode=%s).", mode)
     while True:
-        sleep: float = TICKLE_INTERVAL
+        logging.debug("⏰ Sleep: %.1f s", sleep)
+        await asyncio.sleep(sleep)
+
+        # Reset sleep to default interval (can be adjusted below).
+        sleep = TICKLE_INTERVAL
+
         try:
             await log_status()
 
@@ -68,6 +76,3 @@ async def tickle_loop(auth: Optional[ibauth.IBAuth], mode: Optional[str] = "alwa
             # Backoff a bit so repeated failures don't spin the loop.
             await asyncio.sleep(TICKLE_MIN_SLEEP)
             continue
-
-        logging.debug("⏰ Sleep: %.1f s", sleep)
-        await asyncio.sleep(sleep)
