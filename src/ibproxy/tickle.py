@@ -12,7 +12,7 @@ from .status import get_system_status
 
 # Seconds between tickling the IBKR API.
 #
-TICKLE_INTERVAL = 60
+TICKLE_INTERVAL = 120
 TICKLE_MIN_SLEEP = 5
 
 
