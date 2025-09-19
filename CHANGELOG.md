@@ -1,5 +1,12 @@
 # Change Log
 
+## [0.1.0] - 2025-09-19
+
+- Update to `ibauth` v0.1.0 (fully async).
+- Increase tickle interval to 2 minutes.
+- Sleep before tickle.
+- Add MIT license.
+
 ## [0.0.16] - 2025-09-13
 
 - Update to `ibauth` v0.0.11.
