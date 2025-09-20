@@ -12,7 +12,7 @@ from .conftest import REQUEST_ID
 
 @pytest.mark.asyncio
 @patch("ibproxy.main.httpx.AsyncClient.request")
-async def test_proxy_logs_headers_and_params(mock_request, caplog, dummy_response):
+async def test_proxy_logs_headers_and_params(mock_request, caplog: pytest.LogCaptureFixture, dummy_response):
     """Proxy should log headers and query params when debug logging is enabled."""
     mock_request.return_value = dummy_response
 
@@ -41,7 +41,7 @@ async def test_proxy_logs_headers_and_params(mock_request, caplog, dummy_respons
 client = TestClient(ibproxy.app)
 
 
-def test_proxy_logs_request(caplog, dummy_response):
+def test_proxy_logs_request(caplog: pytest.LogCaptureFixture, dummy_response):
     with patch("ibproxy.main.httpx.AsyncClient.request", return_value=dummy_response):
         caplog.set_level("INFO")
         resp = client.get("/test")

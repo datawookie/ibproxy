@@ -2,10 +2,11 @@ import asyncio
 import logging
 import time
 from typing import Any, Iterator
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+import ibproxy.const as constmod
 import ibproxy.main as appmod
 import ibproxy.tickle as ticklemod
 
@@ -80,33 +81,50 @@ async def test_tickle_loop_logs_error(monkeypatch, caplog):
 
 
 @pytest.mark.asyncio
-async def test_lifespan_starts_and_cancels(monkeypatch):
+@patch("ibproxy.main.ibauth.auth_from_yaml")
+@patch("ibproxy.main.argparse.ArgumentParser.parse_args")
+async def test_lifespan_starts_and_cancels(mock_parse_args, mock_auth_from_yaml, monkeypatch):
     monkeypatch.setattr(ticklemod, "TICKLE_INTERVAL", 0.01)
     monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 
-    # make latest None so the tickle loop will call auth.tickle()
+    # Pretend --debug not passed.
+    mock_parse_args.return_value = Mock(debug=False, port=constmod.API_PORT, config="config.yaml")
+    appmod.app.state.args = mock_parse_args.return_value
+
+    # Make latest None so the tickle loop will call auth.tickle()
     monkeypatch.setattr(appmod.rate, "latest", lambda: None)
 
     auth = DummyAuth()
-    monkeypatch.setattr(appmod, "auth", auth)
+    mock_auth_from_yaml.return_value = auth
 
-    # entering the lifespan should create the task
+    # Trigger the lifespan events.
     async with appmod.lifespan(appmod.app):
         assert isinstance(appmod.tickle, asyncio.Task)
-        # allow the loop to run a few times
-        await asyncio.sleep(0.03)
+        # Allow the loop to run a few times.
+        await asyncio.sleep(0.05)
         assert auth.calls >= 1
 
     assert appmod.tickle.cancelled() or appmod.tickle.done()
 
 
 @pytest.mark.asyncio
-async def test_lifespan_tickle_exception(monkeypatch, caplog):
+@patch("ibproxy.main.ibauth.auth_from_yaml")
+@patch("ibproxy.main.argparse.ArgumentParser.parse_args")
+async def test_lifespan_tickle_exception(
+    mock_parse_args, mock_auth_from_yaml, monkeypatch, caplog: pytest.LogCaptureFixture
+):
     """
     This is testing important functionality. If the tickle loop dies then we
     want to know about it.
     """
     caplog.set_level(logging.INFO)
+
+    # Pretend --debug not passed.
+    mock_parse_args.return_value = Mock(debug=False, port=constmod.API_PORT, config="config.yaml")
+    appmod.app.state.args = mock_parse_args.return_value
+
+    auth = DummyAuth()
+    mock_auth_from_yaml.return_value = auth
 
     async def explode(*args, **kwargs):
         raise RuntimeError("Boom")
@@ -125,7 +143,7 @@ async def test_lifespan_tickle_exception(monkeypatch, caplog):
 
 
 @pytest.mark.asyncio
-async def test_tickle_auto_skips_when_latest_recent(monkeypatch, caplog):
+async def test_tickle_auto_skips_when_latest_recent(monkeypatch, caplog: pytest.LogCaptureFixture):
     """
     If rate.latest() returns a timestamp within TICKLE_INTERVAL seconds ago,
     the loop should log "Within tickle interval..." and NOT call auth.tickle().
@@ -150,7 +168,7 @@ async def test_tickle_auto_skips_when_latest_recent(monkeypatch, caplog):
 
 
 @pytest.mark.asyncio
-async def test_tickle_auto_calls_when_latest_old(monkeypatch, caplog):
+async def test_tickle_auto_calls_when_latest_old(monkeypatch, caplog: pytest.LogCaptureFixture):
     """
     If rate.latest() returns a timestamp older than TICKLE_INTERVAL, auth.tickle()
     should be invoked.
@@ -175,7 +193,7 @@ async def test_tickle_auto_calls_when_latest_old(monkeypatch, caplog):
 
 
 @pytest.mark.asyncio
-async def test_tickle_off(monkeypatch, caplog):
+async def test_tickle_off(monkeypatch, caplog: pytest.LogCaptureFixture):
     monkeypatch.setattr(ticklemod, "TICKLE_INTERVAL", 0.05)
     monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 
@@ -193,7 +211,7 @@ async def test_tickle_off(monkeypatch, caplog):
 
 
 @pytest.mark.asyncio
-async def test_tickle_always(monkeypatch, caplog):
+async def test_tickle_always(monkeypatch, caplog: pytest.LogCaptureFixture):
     monkeypatch.setattr(ticklemod, "TICKLE_INTERVAL", 0.05)
     monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 
@@ -212,7 +230,7 @@ async def test_tickle_always(monkeypatch, caplog):
 
 @pytest.mark.asyncio
 @pytest.mark.disable_noop_get_system_status
-async def test_tickle_status_timeout(timeout_get_system_status, monkeypatch, caplog):
+async def test_tickle_status_timeout(timeout_get_system_status, monkeypatch, caplog: pytest.LogCaptureFixture):
     monkeypatch.setattr(ticklemod, "TICKLE_INTERVAL", 0.05)
     monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 

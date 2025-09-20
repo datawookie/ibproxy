@@ -41,6 +41,12 @@ class DummyAuth:
         self.authenticated = authenticated
         self.calls = 0
 
+    async def connect(self):
+        pass
+
+    async def logout(self):
+        pass
+
     def tickle(self):
         self.calls += 1
 

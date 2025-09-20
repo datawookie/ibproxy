@@ -200,21 +200,28 @@ def test_proxy_handles_request_error(client, monkeypatch) -> None:
     assert resp.json() == {"error": "Proxy error: boom"}
 
 
+@pytest.mark.asyncio
 @patch("ibproxy.main.uvicorn.run")
 @patch("ibproxy.main.ibauth.auth_from_yaml")
 @patch("ibproxy.main.argparse.ArgumentParser.parse_args")
 @patch("ibproxy.tickle.get_system_status", new_callable=AsyncMock)
-def test_main_runs_with_auth_and_uvicorn(mock_get_status, mock_parse_args, mock_auth_from_yaml, mock_uvicorn) -> None:
+async def test_main_runs_with_auth_and_uvicorn(
+    mock_get_status, mock_parse_args, mock_auth_from_yaml, mock_uvicorn
+) -> None:
     mock_get_status.return_value = STATUS_COLOURS["#66cc33"]
 
     # Pretend --debug not passed.
     mock_parse_args.return_value = Mock(debug=False, port=constmod.API_PORT, config="config.yaml")
 
     # Fake auth object with methods.
-    auth = Mock()
+    auth = AsyncMock()
     mock_auth_from_yaml.return_value = auth
 
     appmod.main()
+
+    # Trigger the lifespan events.
+    async with appmod.lifespan(appmod.app):
+        pass
 
     # Auth constructed from config.yaml.
     mock_auth_from_yaml.assert_called_once_with("config.yaml")
@@ -232,7 +239,7 @@ def test_main_runs_with_auth_and_uvicorn(mock_get_status, mock_parse_args, mock_
 
 
 @freeze_time("2025-08-29T15:00:10.000000Z")
-def test_upstream_500_results_in_502_and_logs(monkeypatch, client, caplog, tmp_path) -> None:
+def test_upstream_500_results_in_502_and_logs(monkeypatch, client, caplog: pytest.LogCaptureFixture, tmp_path) -> None:
     # Capture all logging at DEBUG level and above.
     caplog.set_level(logging.DEBUG)
 
