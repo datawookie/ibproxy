@@ -1,46 +1,8 @@
 # IBKR Proxy
 
-[![codecov](https://codecov.io/gh/datawookie/ibproxy/branch/master/graph/badge.svg)](https://codecov.io/gh/datawookie/ibproxy)
-
-```python
-import json
-import time
-
-import httpx
-
-if __name__ == "__main__":
-    headers = {
-        "Accept-Encoding": "gzip,deflate",
-        "Accept": "*/*",
-        "Connection": "keep-alive",
-        "User-Agent": "OAuth",
-    }
-
-    account_id = "DUH999999"
-
-    url = f"http://127.0.0.1:9000/v1/api/portfolio/{account_id}/summary"
-
-    response = httpx.get(url, headers=headers, verify=False, timeout=5)
-    response.raise_for_status()
-
-    data = response.json()
-
-    print(json.dumps(data["accountcode"], indent=2))
-
-    url = f"http://127.0.0.1:9000/v1/api/portfolio/{account_id}/allocation"
-
-    for _ in range(3):
-        response = httpx.get(url, headers=headers, verify=False, timeout=5)
-        response.raise_for_status()
-
-        time.sleep(0.5)
-```
-
-You can also hit the proxy from the command line:
-
-```bash
-curl http://127.0.0.1:9000/v1/api/iserver/accounts
-```
+![PyPI - Version](https://img.shields.io/pypi/v/ibproxy)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/ibproxy)](https://pypi.org/project/ibproxy/)
+![Codecov](https://img.shields.io/codecov/c/github/datawookie/ibproxy)
 
 ## Setup
 
@@ -50,7 +12,7 @@ the IBKR OAuth service:
 - `config.yaml` and
 - `privatekey.pem`.
 
-See the `README` for the `ibauth` project for documentation of the `config.yaml`
+See the `README` for the [`ibauth`](https://github.com/datawookie/ibauth) project for documentation of the `config.yaml`
 content.
 
 ## Running Locally
@@ -67,15 +29,12 @@ locally. Since the proxy is configured to only answer requests from `localhost`
 this will mean that requests from outside will not reach the proxy. In general
 this is a good thing.
 
-For the purpose of illustration suppose that you are running the proxy on an EC2
+There are ways that you can expose the proxy to the outside world. For the purpose of illustration suppose that you are running the proxy on an EC2
 instance at 3.218.141.190.
-
-There are ways that you can expose the proxy to the outside world.
 
 ### NGINX
 
-Unless you set up authentication on the proxy this would potentially open up a
-can of worms.
+Unless you set up authentication this would definitely open up a can of worms.
 
 ### SSH Tunnel
 
@@ -100,6 +59,8 @@ uv run ibproxy --debug
 
 You can access the Swagger interface at http://127.0.0.1:9000/docs.
 
+### Local IBKR Authentication Workflow
+
 If you are testing changes to `ibauth` then you can install a local copy.
 
 1. Add this to the end of `pyproject.toml`:
@@ -117,9 +78,3 @@ You can also set this up in one quick move:
 ```bash
 uv add --editable ../ibauth
 ```
-
-## API Error Codes
-
-- `500` `Please query /accounts first`
-- `401` `not authenticated`
-- `400` `Bad Request: no bridge`
