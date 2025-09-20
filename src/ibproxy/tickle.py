@@ -45,9 +45,9 @@ async def tickle_loop(auth: Optional[ibauth.IBAuth], mode: Optional[str] = "alwa
     # Initial value for interval between tickles.
     sleep: float = TICKLE_INTERVAL
 
-    logging.info("⏰ Start tickle loop (mode=%s).", mode)
+    logging.info("🔁 Start tickle loop (mode=%s).", mode)
     while True:
-        logging.debug("⏰ Sleep: %.1f s", sleep)
+        logging.debug("⏳ Sleep: %.1f s", sleep)
         await asyncio.sleep(sleep)
 
         # Reset sleep to default interval (can be adjusted below).
