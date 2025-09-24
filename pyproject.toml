@@ -11,8 +11,8 @@ maintainers = [
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi>=0.116.1",
-    "uvicorn>=0.35.0",
+    "fastapi>=0.117.1",
+    "uvicorn>=0.37.0",
     "ibauth>=0.1.0",
     "httpx>=0.28.1",
     "curlify2>=2.0.0",

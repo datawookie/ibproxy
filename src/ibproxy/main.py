@@ -7,6 +7,7 @@ import logging.config
 import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urljoin
@@ -25,6 +26,7 @@ from .middleware.request_id import RequestIdMiddleware
 from .models import Health
 from .status import router as status_router
 from .tickle import log_status, tickle_loop
+from .uptime import router as uptime_router
 from .util import logging_level
 
 LOGGING_CONFIG_PATH = Path(__file__).parent / "logging" / "logging.yaml"
@@ -54,6 +56,8 @@ TICKLE_MODE: Optional[str] = None
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     global auth, tickle
+
+    app.state.started_at = datetime.now(UTC)
 
     def _tickle_done(task: asyncio.Task[None]) -> None:
         if task.cancelled():
@@ -94,6 +98,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="IBKR Proxy Service", version=VERSION, lifespan=lifespan)
 
 app.include_router(status_router, prefix="/status", tags=["system"])
+app.include_router(uptime_router, prefix="/uptime", tags=["system"])
 
 app.add_middleware(RequestIdMiddleware)
 
