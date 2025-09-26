@@ -34,13 +34,6 @@ async def log_status() -> None:
         logging.info("IBKR status: %s %s", status.colour, status.label)
 
 
-async def tickle(auth: ibauth.IBAuth) -> None:
-    """
-    The .tickle() method is blocking, so run it in a thread.
-    """
-    await auth.tickle()
-
-
 async def tickle_loop(auth: Optional[ibauth.IBAuth], mode: TickleMode = TickleMode.ALWAYS) -> None:
     """Periodically call auth.tickle() while the app is running."""
     if mode == TickleMode.OFF:
@@ -63,7 +56,7 @@ async def tickle_loop(auth: Optional[ibauth.IBAuth], mode: TickleMode = TickleMo
 
             if auth is not None:
                 if mode == TickleMode.ALWAYS:
-                    await tickle(auth)
+                    await auth.tickle()
                 else:
                     if latest := rate.latest():
                         logging.info(" - Latest request: %s", datetime.fromtimestamp(latest).strftime(DATETIME_FMT))
@@ -73,9 +66,9 @@ async def tickle_loop(auth: Optional[ibauth.IBAuth], mode: TickleMode = TickleMo
                             sleep -= delay
                             sleep = max(sleep, TICKLE_MIN_SLEEP)
                         else:
-                            await tickle(auth)
+                            await auth.tickle()
                     else:
-                        await tickle(auth)
+                        await auth.tickle()
         except Exception:
             logging.error("🚨 Tickle failed. Will retry after short delay.")
             # Backoff a bit so repeated failures don't spin the loop.
