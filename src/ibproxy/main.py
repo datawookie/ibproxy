@@ -25,7 +25,7 @@ from .const import API_HOST, API_PORT, HEADERS, JOURNAL_DIR, VERSION
 from .middleware.request_id import RequestIdMiddleware
 from .models import Health
 from .status import router as status_router
-from .tickle import log_status, tickle_loop
+from .tickle import TickleMode, log_status, tickle_loop
 from .uptime import router as uptime_router
 from .util import logging_level
 
@@ -48,7 +48,7 @@ warnings.filterwarnings(
 #
 auth: Optional[ibauth.IBAuth] = None
 tickle = None
-TICKLE_MODE: Optional[str] = None
+TICKLE_MODE: TickleMode = TickleMode.ALWAYS
 
 # ==============================================================================
 
@@ -276,8 +276,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--tickle-mode",
-        choices=["always", "auto", "off"],
-        default="always",
+        choices=[mode.value for mode in TickleMode],
+        default=TickleMode.ALWAYS.value,
         help="How the tickle loop decides to call auth.tickle(): "
         "'always' = ignore activity and call every interval (default), "
         "'auto' = call only when idle, "

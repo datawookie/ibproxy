@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime
+from enum import Enum
 from typing import Optional
 
 import httpx
@@ -14,6 +15,12 @@ from .status import get_system_status
 #
 TICKLE_INTERVAL = 120
 TICKLE_MIN_SLEEP = 5
+
+
+class TickleMode(str, Enum):
+    ALWAYS = "always"  # Default
+    AUTO = "auto"
+    OFF = "off"
 
 
 async def log_status() -> None:
@@ -31,14 +38,12 @@ async def tickle(auth: ibauth.IBAuth) -> None:
     """
     The .tickle() method is blocking, so run it in a thread.
     """
-    # TODO: Refactor ibauth so that it's async?
-    # await asyncio.to_thread(auth.tickle)
     await auth.tickle()
 
 
-async def tickle_loop(auth: Optional[ibauth.IBAuth], mode: Optional[str] = "always") -> None:
+async def tickle_loop(auth: Optional[ibauth.IBAuth], mode: TickleMode = TickleMode.ALWAYS) -> None:
     """Periodically call auth.tickle() while the app is running."""
-    if mode == "off":
+    if mode == TickleMode.OFF:
         logging.warning("⛔ Tickle loop disabled.")
         return
 
@@ -57,7 +62,7 @@ async def tickle_loop(auth: Optional[ibauth.IBAuth], mode: Optional[str] = "alwa
             await log_status()
 
             if auth is not None:
-                if mode == "always":
+                if mode == TickleMode.ALWAYS:
                     await tickle(auth)
                 else:
                     if latest := rate.latest():
