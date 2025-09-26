@@ -39,18 +39,12 @@ def timeout_get_system_status(monkeypatch: Any) -> Iterator[None]:
 
 @pytest.mark.asyncio
 async def test_tickle_loop_calls_auth(monkeypatch):
-    # make ticks frequent for the test
-    monkeypatch.setattr(ticklemod, "TICKLE_INTERVAL", 0.01)
-    # ensure we don't busy-loop when remaining time is tiny
     monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
-
-    # ensure rate.latest() returns None so tickle() is always called
-    monkeypatch.setattr(appmod.rate, "latest", lambda: None)
 
     auth = DummyAuth()
 
-    task = asyncio.create_task(appmod.tickle_loop(auth))
-    # give it a little time to run several iterations
+    task = asyncio.create_task(appmod.tickle_loop(auth, "always", 0.01))
+    # Time to run several iterations.
     await asyncio.sleep(0.05)
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
@@ -62,13 +56,12 @@ async def test_tickle_loop_calls_auth(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_tickle_loop_logs_error(monkeypatch, caplog):
-    monkeypatch.setattr(ticklemod, "TICKLE_INTERVAL", 0.01)
     monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 
     auth = DummyAuthFlaky()
 
     caplog.set_level(logging.DEBUG)
-    task = asyncio.create_task(appmod.tickle_loop(auth))
+    task = asyncio.create_task(appmod.tickle_loop(auth, "always", 0.01))
     await asyncio.sleep(0.05)
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
@@ -84,15 +77,8 @@ async def test_tickle_loop_logs_error(monkeypatch, caplog):
 @patch("ibproxy.main.ibauth.auth_from_yaml")
 @patch("ibproxy.main.argparse.ArgumentParser.parse_args")
 async def test_lifespan_starts_and_cancels(mock_parse_args, mock_auth_from_yaml, monkeypatch):
-    monkeypatch.setattr(ticklemod, "TICKLE_INTERVAL", 0.01)
-    monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
-
-    # Pretend --debug not passed.
-    mock_parse_args.return_value = Mock(debug=False, port=constmod.API_PORT, config="config.yaml")
+    mock_parse_args.return_value = Mock(debug=False, port=constmod.API_PORT, config="config.yaml", tickle_interval=0.01)
     appmod.app.state.args = mock_parse_args.return_value
-
-    # Make latest None so the tickle loop will call auth.tickle()
-    monkeypatch.setattr(appmod.rate, "latest", lambda: None)
 
     auth = DummyAuth()
     mock_auth_from_yaml.return_value = auth
@@ -173,15 +159,14 @@ async def test_tickle_auto_calls_when_latest_old(monkeypatch, caplog: pytest.Log
     If rate.latest() returns a timestamp older than TICKLE_INTERVAL, auth.tickle()
     should be invoked.
     """
-    monkeypatch.setattr(ticklemod, "TICKLE_INTERVAL", 0.05)
     monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 
-    latest = time.time() - (ticklemod.TICKLE_INTERVAL + 0.02)
+    latest = time.time() - 0.02
     monkeypatch.setattr(appmod.rate, "latest", lambda: latest)
 
     auth = DummyAuth()
 
-    task = asyncio.create_task(appmod.tickle_loop(auth, "auto"))
+    task = asyncio.create_task(appmod.tickle_loop(auth, "auto", 0.05))
     # Wait long enough for the loop to call tickle once.
     await asyncio.sleep(0.2)
     task.cancel()
@@ -231,19 +216,18 @@ async def test_tickle_always(monkeypatch, caplog: pytest.LogCaptureFixture):
 @pytest.mark.asyncio
 @pytest.mark.disable_noop_get_system_status
 async def test_tickle_status_timeout(timeout_get_system_status, monkeypatch, caplog: pytest.LogCaptureFixture):
-    monkeypatch.setattr(ticklemod, "TICKLE_INTERVAL", 0.05)
     monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 
     auth = DummyAuth()
 
-    task = asyncio.create_task(appmod.tickle_loop(auth, "always"))
+    task = asyncio.create_task(appmod.tickle_loop(auth, "always", 0.05))
     # Wait long enough for the loop to call tickle once.
     await asyncio.sleep(0.2)
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await task
 
-    assert any("IBKR status timed out!" in rec.message for rec in caplog.records)
+    assert any("Status request timed out!" in rec.message for rec in caplog.records)
 
     # Tickle should have been called at least once.
     assert auth.calls >= 1
