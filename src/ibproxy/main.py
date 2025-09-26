@@ -25,7 +25,7 @@ from .const import API_HOST, API_PORT, HEADERS, JOURNAL_DIR, VERSION
 from .middleware.request_id import RequestIdMiddleware
 from .models import Health
 from .status import router as status_router
-from .tickle import TickleMode, log_status, tickle_loop
+from .tickle import TICKLE_INTERVAL, TickleMode, tickle_loop
 from .uptime import router as uptime_router
 from .util import logging_level
 
@@ -68,14 +68,19 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             logging.exception("Tickle task terminated with exception: %s", error)
 
     try:
-        await log_status()
         auth = ibauth.auth_from_yaml(app.state.args.config)
         await auth.connect()
     except Exception:
         logging.error("🚨 Authentication failed!")
         sys.exit(1)
 
-    tickle = asyncio.create_task(tickle_loop(auth, app.state.args.tickle_mode))
+    tickle = asyncio.create_task(
+        tickle_loop(
+            auth,
+            app.state.args.tickle_mode,
+            app.state.args.tickle_interval,
+        )
+    )
     tickle.add_done_callback(_tickle_done)
 
     yield
@@ -282,6 +287,12 @@ def main() -> None:
         "'always' = ignore activity and call every interval (default), "
         "'auto' = call only when idle, "
         "'off' = don't run the tickle loop.",
+    )
+    parser.add_argument(
+        "--tickle-interval",
+        type=float,
+        default=TICKLE_INTERVAL,
+        help=f"Interval (seconds) between tickles (default: {TICKLE_INTERVAL}).",
     )
     args = parser.parse_args()
 
