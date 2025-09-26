@@ -346,7 +346,7 @@ wheels = [
 
 [[package]]
 name = "ibauth"
-version = "0.1.0"
+version = "0.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
@@ -357,9 +357,9 @@ dependencies = [
     { name = "pyyaml" },
     { name = "tenacity" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5c/fe/751781eb1201db03649b3c063fd849fe9a442f5a4ccab60deb92030fad33/ibauth-0.1.0.tar.gz", hash = "sha256:97f2771ac6420375a36decf88c2439dd55365f004200eeb249a5a0017228aea5", size = 22749, upload-time = "2025-09-19T05:26:54.337Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/85/ac/89ef42c5a168db579ea362a849c6f9d14c286d6d6d17bcf0918990cb4e04/ibauth-0.1.1.tar.gz", hash = "sha256:ba894832055a45e7b4562ba0344dff999bd57f68f3569d17a6a7264539433965", size = 14696, upload-time = "2025-09-26T11:37:53.959Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4c/33/24bae3359b53c9e04d2d699216ed59a2d42db971cdbd516c1594cbe2ab8f/ibauth-0.1.0-py3-none-any.whl", hash = "sha256:977eb03d423e63db15d8740a2bef10f1ac57438508feb3ef9bdcac052f89c6b1", size = 15170, upload-time = "2025-09-19T05:26:53.228Z" },
+    { url = "https://files.pythonhosted.org/packages/22/4c/474446f7aa58e3e96b226aa13f9cdacac46fbfdf7d41631c8f59f9dfb1b8/ibauth-0.1.1-py3-none-any.whl", hash = "sha256:a0644567ac04966710a3b973b08ff8430a720be79505c21b2d42d559d5654db4", size = 11457, upload-time = "2025-09-26T11:37:52.831Z" },
 ]
 
 [[package]]
@@ -399,7 +399,7 @@ requires-dist = [
     { name = "curlify2", specifier = ">=2.0.0" },
     { name = "fastapi", specifier = ">=0.117.1" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "ibauth", specifier = ">=0.1.0" },
+    { name = "ibauth", specifier = ">=0.1.1" },
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "uvicorn", specifier = ">=0.37.0" },
 ]
