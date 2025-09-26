@@ -4,7 +4,6 @@ import bz2
 import json
 import logging
 import logging.config
-import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -67,12 +66,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         if error:
             logging.exception("Tickle task terminated with exception: %s", error)
 
+    auth = ibauth.auth_from_yaml(app.state.args.config)
     try:
-        auth = ibauth.auth_from_yaml(app.state.args.config)
         await auth.connect()
     except Exception:
         logging.error("🚨 Authentication failed!")
-        sys.exit(1)
 
     tickle = asyncio.create_task(
         tickle_loop(

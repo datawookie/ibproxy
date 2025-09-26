@@ -2,7 +2,6 @@ import asyncio
 import logging
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 import httpx
 import ibauth
@@ -35,7 +34,7 @@ async def log_status() -> None:
 
 
 async def tickle_loop(
-    auth: Optional[ibauth.IBAuth], mode: TickleMode = TickleMode.ALWAYS, interval: float = TICKLE_INTERVAL
+    auth: ibauth.IBAuth, mode: TickleMode = TickleMode.ALWAYS, interval: float = TICKLE_INTERVAL
 ) -> None:
     """Periodically call auth.tickle() while the app is running."""
     if mode == TickleMode.OFF:
@@ -65,10 +64,14 @@ async def tickle_loop(
             await log_status()
 
             should, delay = await should_tickle()
-            if auth is not None and should:
+            if should:
                 await auth.tickle()
+
+            if not auth.is_connected():
+                logging.warning("🚨 Not connected.")
+                # TODO: Replicate manual restart.
         except Exception:
-            logging.error("🚨 Tickle failed. Will retry after short delay.")
+            logging.error("🚨 Tickle failed.")
             # Backoff a bit so repeated failures don't spin the loop.
             await asyncio.sleep(TICKLE_MIN_SLEEP)
             continue
