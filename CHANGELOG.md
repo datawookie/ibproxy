@@ -1,5 +1,13 @@
 # Change Log
 
+## [0.1.2] - 2025-09-26
+
+- Update to ibauth v0.1.1.
+- Add `--tickle-interval` CLI argument.
+- Refactor tickle.
+
+## [0.1.1] - 2025-09-24
+
 ## [0.1.0] - 2025-09-19
 
 - Update to `ibauth` v0.1.0 (fully async).
