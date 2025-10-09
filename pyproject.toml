@@ -11,13 +11,13 @@ maintainers = [
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi>=0.117.1",
+    "fastapi>=0.118.2",
     "uvicorn>=0.37.0",
     "ibauth>=0.1.1",
     "httpx>=0.28.1",
     "curlify2>=2.0.0",
     "bs4>=0.0.2",
-    "pydantic>=2.11.7",
+    "pydantic>=2.11.10",
 ]
 
 [dependency-groups]
@@ -25,7 +25,7 @@ dev = [
     "bump2version>=1.0.1",
     "pre-commit>=4.3.0",
     "mypy>=1.16.0",
-    "ruff>=0.13.0",
+    "ruff>=0.13.3",
 ]
 test = [
     "freezegun>=1.5.5",
