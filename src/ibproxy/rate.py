@@ -1,21 +1,47 @@
+import logging
 import time
 from collections import defaultdict, deque
 from datetime import UTC, datetime
-from threading import Lock
+from threading import RLock
 
 times: dict[str, deque[float]] = defaultdict(deque)
 
-lock = Lock()
+# Use a re-entrant lock to allow functions that have acquired the lock to call
+# other functions that also acquire the lock.
+#
+lock = RLock()
 
 # Sliding window in seconds.
 #
 # This is the time interval that's used to calculate the rates.
 #
-WINDOW = 5
+WINDOW = 30
 
-# IBKR rate limits are documented at https://www.interactivebrokers.com/campus/ibkr-api-page/web-api-trading/#pacing-limitations-8.
+# IBKR rate limits are documented at
+#
+# https://www.interactivebrokers.com/campus/ibkr-api-page/web-api-trading/#pacing-limitations-8.
+#
+# There's a global limit of 50 requests per second. However, there are specific
+# limits applied to some endpoints that are more restrictive.
 
 # TODO: Could we use https://github.com/ZhuoZhuoCrayon/throttled-py?
+
+
+def prune(queue: deque[float] | None = None, now: float | None = None) -> None:
+    """
+    Prune old timestamps from the deques.
+
+    Args:
+        dq (deque[float] | None): The deque to prune. If None, prunes all deques.
+    """
+    if now is None:
+        now = time.time()
+
+    with lock:
+        for dq in [queue] if queue else times.values():
+            while dq and dq[0] < now - WINDOW:
+                logging.debug("Prune timestamp (%.3f).", dq[0])
+                dq.popleft()
 
 
 def record(endpoint: str) -> datetime:
@@ -31,9 +57,8 @@ def record(endpoint: str) -> datetime:
         # Add the current time to the deque.
         dq = times[endpoint]
         dq.append(now)
-        # Prune old entries.
-        while dq and dq[0] < now - WINDOW:
-            dq.popleft()
+
+    prune(dq, now)
 
     return datetime.fromtimestamp(now, tz=UTC)
 
@@ -72,21 +97,34 @@ def rate(endpoint: str | None = None) -> tuple[float | None, float | None]:
     """
     with lock:
         if endpoint is None:
+            # Prune all queues because there might be old timestamps in some.
+            #
+            # This is necessary because we are consolidating times over all
+            # paths and some of them might not have been called (and hence
+            # pruned recently).
+            #
+            prune()
+            #
             # Consolidate times over all paths.
-            dq = [t for dq in times.values() for t in dq]
-            # Sort because they are not out of order.
+            dq = [t for sublist in times.values() for t in sublist]
             dq.sort()
         else:
             dq = times[endpoint]  # type: ignore[assignment]
 
+        logging.debug("Timestamps: %s", list(dq))
+
         n = len(dq)
 
         if not dq or n < 2:
+            # Not enough data to compute a rate.
             elapsed = 0.0
         else:
+            # Time difference between the first and last timestamps.
             elapsed = dq[-1] - dq[0]
 
+        # Number of requests per second.
         rate = n / elapsed if elapsed > 0 else None
+        # Average period between requests (approximation).
         period = 1 / rate if rate is not None else None
 
         return rate, period
@@ -100,3 +138,8 @@ def format(rate: float | None) -> str:
         rate (float | None): The rate to format.
     """
     return f"{rate:5.2f}" if rate is not None else "-----"
+
+
+def log(endpoint: str | None = None) -> None:
+    rps, period = rate(endpoint)
+    logging.info(f"⌚ Request rate (last {WINDOW} s): {format(rps)} Hz / {format(period)} s | ({endpoint or 'global'})")

@@ -161,7 +161,7 @@ def test_proxy_handles_post_json_body(client, monkeypatch, tmp_path) -> None:
 def test_rate_module_sliding_window(monkeypatch) -> None:
     # Control time to make the math deterministic
     t0 = 1_000_000.0
-    times = [t0, t0 + 1, t0 + 2, t0 + 7]  # last one falls outside default WINDOW=5 for earlier entries
+    times = [t0, t0 + 1, t0 + 2, t0 + 7]  # last one falls outside default WINDOW for earlier entries
 
     i = {"i": 0}
 
@@ -173,15 +173,15 @@ def test_rate_module_sliding_window(monkeypatch) -> None:
     monkeypatch.setattr(ratemod, "WINDOW", 5)
     monkeypatch.setattr("time.time", fake_time)
 
-    ep = "/x"
+    path = "/test"
     ratemod.times.clear()
-    ratemod.record(ep)  # t0
-    ratemod.record(ep)  # t0+1
-    ratemod.record(ep)  # t0+2
+    ratemod.record(path)  # t0
+    ratemod.record(path)  # t0+1
+    ratemod.record(path)  # t0+2
     # Now jump ahead by 5 seconds; previous earliest should be pruned
-    ratemod.record(ep)  # t0+7
+    ratemod.record(path)  # t0+7
 
-    rps, period = ratemod.rate(ep)
+    rps, period = ratemod.rate(path)
     # we only have the last two timestamps in the window: [t0+2, t0+7] -> n=2, elapsed=5 => rps=0.4
     assert rps is not None and abs(rps - 0.4) < 1e-6
     assert period is not None and abs(period - 2.5) < 1e-6

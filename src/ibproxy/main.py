@@ -177,11 +177,7 @@ async def proxy(path: str, request: Request) -> Response:
         # TODO: Could try to infer content type if header is missing.
         content_type = headers.get("content-type")
 
-        logging.info(f"⌚ Rates (last {rate.WINDOW} s):")
-        rps, period = rate.rate(path)
-        logging.info(f"  - {rate.format(rps)} Hz / {rate.format(period)} s | {path}")
-        rps, period = rate.rate()
-        logging.info(f"  - {rate.format(rps)} Hz / {rate.format(period)} s | (global)")
+        rate.log(path)
 
         json_path = JOURNAL_DIR / (
             filename := now.strftime(f"%Y%m%d/%Y%m%d-%H%M%S-{request.state.request_id}.json.bz2")

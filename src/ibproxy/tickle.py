@@ -36,7 +36,9 @@ async def log_status() -> None:
 async def tickle_loop(
     auth: ibauth.IBAuth, mode: TickleMode = TickleMode.ALWAYS, interval: float = TICKLE_INTERVAL
 ) -> None:
-    """Periodically call auth.tickle() while the app is running."""
+    """
+    Periodically call auth.tickle() while the app is running.
+    """
     if mode == TickleMode.OFF:
         logging.warning("⛔ Tickle loop disabled.")
         return
@@ -59,6 +61,8 @@ async def tickle_loop(
     while True:
         logging.debug("⏳ Sleep: %.1f s", delay)
         await asyncio.sleep(delay)
+
+        rate.log()
 
         try:
             await log_status()
