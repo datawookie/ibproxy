@@ -98,12 +98,13 @@ def _make_mock_httpx(
     return capture
 
 
+@pytest.mark.asyncio
 @freeze_time("2025-08-22T12:34:56.789000Z")
-def test_proxy_forwards_and_strips_headers(client, monkeypatch, tmp_path) -> None:
+async def test_proxy_forwards_and_strips_headers(client, monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(appmod, "JOURNAL_DIR", tmp_path)
 
     # Patch rate.record() to avoid time dependence and to return the fixed datetime
-    def _record(_path: str) -> datetime:
+    async def _record(_path: str) -> datetime:
         # Maintain minimal realistic rate state.
         now = datetime.now(tz=timezone.utc)
         ratemod.times[_path].append(now.timestamp())
@@ -158,7 +159,8 @@ def test_proxy_handles_post_json_body(client, monkeypatch, tmp_path) -> None:
     assert json.loads(captured["content"].decode("utf-8")) == payload
 
 
-def test_rate_module_sliding_window(monkeypatch) -> None:
+@pytest.mark.asyncio
+async def test_rate_module_sliding_window(monkeypatch) -> None:
     # Control time to make the math deterministic
     t0 = 1_000_000.0
     times = [t0, t0 + 1, t0 + 2, t0 + 7]  # last one falls outside default WINDOW for earlier entries
@@ -175,13 +177,13 @@ def test_rate_module_sliding_window(monkeypatch) -> None:
 
     path = "/test"
     ratemod.times.clear()
-    ratemod.record(path)  # t0
-    ratemod.record(path)  # t0+1
-    ratemod.record(path)  # t0+2
+    await ratemod.record(path)  # t0
+    await ratemod.record(path)  # t0+1
+    await ratemod.record(path)  # t0+2
     # Now jump ahead by 5 seconds; previous earliest should be pruned
-    ratemod.record(path)  # t0+7
+    await ratemod.record(path)  # t0+7
 
-    rps, period = ratemod.rate(path)
+    rps, period = await ratemod.rate(path)
     # we only have the last two timestamps in the window: [t0+2, t0+7] -> n=2, elapsed=5 => rps=0.4
     assert rps is not None and abs(rps - 0.4) < 1e-6
     assert period is not None and abs(period - 2.5) < 1e-6
@@ -238,15 +240,18 @@ async def test_main_runs_with_auth_and_uvicorn(
     auth.logout.assert_called_once()
 
 
+@pytest.mark.asyncio
 @freeze_time("2025-08-29T15:00:10.000000Z")
-def test_upstream_500_results_in_502_and_logs(monkeypatch, client, caplog: pytest.LogCaptureFixture, tmp_path) -> None:
+async def test_upstream_500_results_in_502_and_logs(
+    monkeypatch, client, caplog: pytest.LogCaptureFixture, tmp_path
+) -> None:
     # Capture all logging at DEBUG level and above.
     caplog.set_level(logging.DEBUG)
 
     monkeypatch.setattr(appmod, "JOURNAL_DIR", tmp_path)
 
     # TODO: This is repeated from another test. Factor into separate function or fixture.
-    def _record(_path: str) -> datetime:
+    async def _record(_path: str) -> datetime:
         # Maintain minimal realistic rate state.
         now = datetime.now(tz=timezone.utc)
         ratemod.times[_path].append(now.timestamp())

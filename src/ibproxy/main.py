@@ -157,7 +157,7 @@ async def proxy(path: str, request: Request) -> Response:
 
         # Forward request.
         async with httpx.AsyncClient() as client:
-            now = rate.record(path)
+            now = await rate.record(path)
             async with AsyncTimer() as duration:
                 response = await client.request(
                     method=method,
@@ -177,7 +177,7 @@ async def proxy(path: str, request: Request) -> Response:
         # TODO: Could try to infer content type if header is missing.
         content_type = headers.get("content-type")
 
-        rate.log(path)
+        await rate.log(path)
 
         json_path = JOURNAL_DIR / (
             filename := now.strftime(f"%Y%m%d/%Y%m%d-%H%M%S-{request.state.request_id}.json.bz2")

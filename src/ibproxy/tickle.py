@@ -62,7 +62,7 @@ async def tickle_loop(
         logging.debug("⏳ Sleep: %.1f s", delay)
         await asyncio.sleep(delay)
 
-        rate.log()
+        await rate.log()
 
         try:
             await log_status()

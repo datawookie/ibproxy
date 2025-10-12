@@ -27,7 +27,7 @@ WINDOW = 30
 # TODO: Could we use https://github.com/ZhuoZhuoCrayon/throttled-py?
 
 
-def prune(queue: deque[float] | None = None, now: float | None = None) -> None:
+async def prune(queue: deque[float] | None = None, now: float | None = None) -> None:
     """
     Prune old timestamps from the deques.
 
@@ -44,7 +44,7 @@ def prune(queue: deque[float] | None = None, now: float | None = None) -> None:
                 dq.popleft()
 
 
-def record(endpoint: str) -> datetime:
+async def record(endpoint: str) -> datetime:
     """
     Record the current request timestamp.
 
@@ -58,7 +58,7 @@ def record(endpoint: str) -> datetime:
         dq = times[endpoint]
         dq.append(now)
 
-    prune(dq, now)
+    await prune(dq, now)
 
     return datetime.fromtimestamp(now, tz=UTC)
 
@@ -79,7 +79,7 @@ def latest(endpoint: str | None = None) -> float | None:
             return dq[-1] if dq else None
 
 
-def rate(endpoint: str | None = None) -> tuple[float | None, float | None]:
+async def rate(endpoint: str | None = None) -> tuple[float | None, float | None]:
     """
     Compute sliding-window average requests per second.
 
@@ -103,7 +103,7 @@ def rate(endpoint: str | None = None) -> tuple[float | None, float | None]:
             # paths and some of them might not have been called (and hence
             # pruned recently).
             #
-            prune()
+            await prune()
             #
             # Consolidate times over all paths.
             dq = [t for sublist in times.values() for t in sublist]
@@ -140,6 +140,6 @@ def format(rate: float | None) -> str:
     return f"{rate:5.2f}" if rate is not None else "-----"
 
 
-def log(endpoint: str | None = None) -> None:
-    rps, period = rate(endpoint)
+async def log(endpoint: str | None = None) -> None:
+    rps, period = await rate(endpoint)
     logging.info(f"⌚ Request rate (last {WINDOW} s): {format(rps)} Hz / {format(period)} s | ({endpoint or 'global'})")
