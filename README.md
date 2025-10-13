@@ -1,3 +1,5 @@
+<img src="https://github.com/user-attachments/assets/f04d864a-346e-4ebd-ba71-d059e290f654">
+
 # IBKR Proxy
 
 ![PyPI - Version](https://img.shields.io/pypi/v/ibproxy)
