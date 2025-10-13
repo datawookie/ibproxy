@@ -1,6 +1,6 @@
 [project]
 name = "ibproxy"
-version = "0.1.2"
+version = "0.1.3"
 description = "A proxy service for the Interactive Brokers API"
 authors = [
   {name = "Andrew Collier"}

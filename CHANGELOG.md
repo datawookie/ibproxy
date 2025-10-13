@@ -1,5 +1,11 @@
 # Change Log
 
+## [0.1.3] - 2025-10-13
+
+- Use [pictex](https://github.com/francozanardi/pictex) to generate banner image.
+- Make rate functions asynchronous.
+- Only calculate global rate during tickle.
+
 ## [0.1.2] - 2025-09-26
 
 - Update to ibauth v0.1.1.
