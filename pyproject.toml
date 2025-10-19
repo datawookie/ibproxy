@@ -12,7 +12,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.119.0",
-    "uvicorn>=0.37.0",
+    "uvicorn>=0.38.0",
     "ibauth>=0.1.1",
     "httpx>=0.28.1",
     "curlify2>=2.0.0",

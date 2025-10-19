@@ -298,6 +298,10 @@ def main() -> None:
 
     logging.config.dictConfig(LOGGING_CONFIG)
 
+    logging.info("=" * 69)
+    logging.info(f"ibproxy ({VERSION})")
+    logging.info("=" * 69)
+
     uvicorn.run(
         "ibproxy.main:app",
         host=API_HOST,
