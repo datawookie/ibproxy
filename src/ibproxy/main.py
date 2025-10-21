@@ -16,6 +16,7 @@ import ibauth
 import uvicorn
 import yaml
 from fastapi import FastAPI, Request
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, Response
 from ibauth.timing import AsyncTimer
 
@@ -104,6 +105,7 @@ app.include_router(status_router, prefix="/status", tags=["system"])
 app.include_router(uptime_router, prefix="/uptime", tags=["system"])
 
 app.add_middleware(RequestIdMiddleware)
+app.add_middleware(GZipMiddleware, minimum_size=10, compresslevel=5)
 
 
 @app.get(

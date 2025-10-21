@@ -120,8 +120,8 @@ async def test_proxy_forwards_and_strips_headers(client, monkeypatch, tmp_path) 
 
     request_id = resp.headers.get("X-Request-ID")
 
-    assert "content-length" in resp.headers
-    assert "content-encoding" not in resp.headers
+    assert "content-encoding" in resp.headers
+    assert "gzip" in resp.headers["content-encoding"]
     assert resp.headers["content-type"].startswith("application/json")
 
     # Upstream call received expected forwarding bits

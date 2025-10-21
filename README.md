@@ -80,3 +80,24 @@ You can also set this up in one quick move:
 ```bash
 uv add --editable ../ibauth
 ```
+
+### Tests
+
+To run tests:
+
+```bash
+uv run pytest
+```
+
+The integration tests require a running proxy. To run those:
+
+```bash
+uv run pytest -m integration
+```
+
+There are also some tests that are marked specifically for infrequent use. To
+run those:
+
+```bash
+uv run pytest -m seldom
+```

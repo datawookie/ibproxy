@@ -1,6 +1,7 @@
+import gzip
 import os
 import time
-from typing import Any, Dict
+from typing import Any
 
 import httpx
 import pytest
@@ -18,8 +19,9 @@ DEFAULT_HEADERS = {
 REQUEST_TIMEOUT = 5.0
 
 
-def _get_response(client: httpx.Client, url: str) -> Dict[str, Any]:
-    return client.get(url, headers=DEFAULT_HEADERS)
+def _get_response(client: httpx.Client, url: str, headers: dict[str, str] = {}) -> dict[str, Any]:
+    headers = {**DEFAULT_HEADERS, **headers}
+    return client.get(url, headers=headers)
 
 
 @pytest.fixture(scope="session")
@@ -44,8 +46,6 @@ def test_portfolio_summary(client: httpx.Client):
     url = f"/v1/api/portfolio/{ACCOUNT_ID}/summary"
     response = _get_response(client, url)
     data = response.json()
-
-    print(response.headers)
 
     assert response.headers["content-type"] == "application/json; charset=utf-8"
 
@@ -89,7 +89,6 @@ def test_invalid(client: httpx.Client):
     assert response.headers["content-type"] == "application/json"
 
 
-@pytest.mark.integration
 @pytest.mark.seldom
 # Has a slower rate limit. If called too frequently, it will be rate limited.
 @pytest.mark.skip(reason="Enable when you want to exercise slower-paced endpoint.")
@@ -99,3 +98,136 @@ def test_iserver_accounts(client: httpx.Client):
     assert isinstance(data, (dict, list))
     if isinstance(data, list) and data:
         assert isinstance(data[0], dict)
+
+
+TICKER_LIST = [
+    "AAPL",
+    "MSFT",
+    "GOOGL",
+    "AMZN",
+    "NVDA",
+    "TSLA",
+    "META",
+    "BRK.B",
+    "UNH",
+    "LLY",
+    "JPM",
+    "V",
+    "JNJ",
+    "WMT",
+    "XOM",
+    "PG",
+    "MA",
+    "HD",
+    "CVX",
+    "MRK",
+    "ABBV",
+    "AVGO",
+    "COST",
+    "PEP",
+    "KO",
+    "BAC",
+    "DIS",
+    "ADBE",
+    "TMO",
+    "ORCL",
+    "NFLX",
+    "CRM",
+    "INTC",
+    "PFE",
+    "ABT",
+    "MCD",
+    "CSCO",
+    "DHR",
+    "VZ",
+    "NKE",
+    "ACN",
+    "WFC",
+    "LIN",
+    "TXN",
+    "NEE",
+    "MS",
+    "AMD",
+    "AMGN",
+    "HON",
+    "PM",
+    "UNP",
+    "UPS",
+    "RTX",
+    "BMY",
+    "QCOM",
+    "SBUX",
+    "LOW",
+    "CAT",
+    "INTU",
+    "IBM",
+    "LMT",
+    "BLK",
+    "GS",
+    "GE",
+    "BA",
+    "DE",
+    "MDT",
+    "T",
+    "SPGI",
+    "NOW",
+    "PLD",
+    "ZTS",
+    "ISRG",
+    "BKNG",
+    "CB",
+    "AMAT",
+    "ADI",
+    "MO",
+    "VRTX",
+    "REGN",
+    "CI",
+    "GILD",
+    "SYK",
+    "MU",
+    "MMC",
+    "APD",
+    "PANW",
+    "EL",
+    "ADP",
+    "FDX",
+    "TGT",
+    "SO",
+    "EQIX",
+    "ICE",
+    "HCA",
+    "SLB",
+    "PGR",
+    "CL",
+    "EW",
+    "NSC",
+]
+
+
+@pytest.mark.integration
+def test_compression(client: httpx.Client):
+    tickers = ",".join(TICKER_LIST)
+    url = f"/v1/api/trsrv/stocks?symbols={tickers}"
+
+    headers = {**DEFAULT_HEADERS}
+
+    # Use stream() to access raw (uncompressed) response data.
+    with client.stream("GET", url, headers=headers) as response:
+        compressed = b"".join(response.iter_raw())
+
+    decompressed = gzip.decompress(compressed)
+
+    compressed_size = len(compressed)
+    decompressed_size = len(decompressed)
+
+    compression_ratio = decompressed_size / compressed_size
+
+    assert compressed_size < decompressed_size
+    assert compression_ratio > 5.0
+    assert "gzip" in response.headers.get("Content-Encoding").lower()
+
+    # Now without compression.
+    headers["Accept-Encoding"] = "identity"
+    with client.stream("GET", url, headers=headers) as response:
+        assert response.headers.get("Content-Encoding") is None
+        assert int(response.headers.get("Content-Length")) == decompressed_size
