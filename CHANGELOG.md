@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.1.4] - 2025-10-21
+
+- Enable response compression.
+
 ## [0.1.3] - 2025-10-13
 
 - Use [pictex](https://github.com/francozanardi/pictex) to generate banner image.
