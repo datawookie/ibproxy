@@ -105,7 +105,7 @@ app.include_router(status_router, prefix="/status", tags=["system"])
 app.include_router(uptime_router, prefix="/uptime", tags=["system"])
 
 app.add_middleware(RequestIdMiddleware)
-app.add_middleware(GZipMiddleware, minimum_size=10, compresslevel=5)
+app.add_middleware(GZipMiddleware, minimum_size=100, compresslevel=5)
 
 
 @app.get(
