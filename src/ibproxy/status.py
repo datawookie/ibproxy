@@ -61,7 +61,7 @@ async def get_system_status(timeout: float = 10) -> SystemStatus:
     try:
         # Other tables on the page. Most reliable way to find the right one.
         #
-        availability = soup.find("td", string=re.compile("System Availability")).parent.parent
+        availability = soup.find("td", string=re.compile("(System|Exchange) Availability")).parent.parent
 
         colour = availability.select_one("tr.odd > td.centeritem[style]")["style"].split(":")[-1].strip()
 
