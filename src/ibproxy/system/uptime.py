@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Request
 
-from .models import Uptime
+from ..models import Uptime
 
 router = APIRouter()
 
@@ -26,11 +26,11 @@ router = APIRouter()
         },
     },
 )  # type: ignore[misc]
-async def status(request: Request) -> Uptime:
-    uptime = datetime.now(UTC) - request.app.state.started_at
+async def uptime(request: Request) -> Uptime:
+    uptime_duration = datetime.now(UTC) - request.app.state.started_at
 
     return Uptime(
         started=request.app.state.started_at,
-        uptime_seconds=uptime.total_seconds(),
-        uptime_human=str(uptime),
+        uptime_seconds=uptime_duration.total_seconds(),
+        uptime_human=str(uptime_duration),
     )

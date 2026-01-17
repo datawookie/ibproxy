@@ -3,7 +3,7 @@ import logging
 import ibauth
 from fastapi import APIRouter, HTTPException, Request
 
-from .models import SystemStatus
+from ..models import SystemStatus
 from .status import get_system_status
 
 router = APIRouter()
@@ -16,7 +16,6 @@ router = APIRouter()
 )  # type: ignore[misc]
 async def reset(request: Request) -> SystemStatus:
     try:
-        print(request.app.state.args.config)
         auth = ibauth.auth_from_yaml(request.app.state.args.config)
         try:
             await auth.connect()

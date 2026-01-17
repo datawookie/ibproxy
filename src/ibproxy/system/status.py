@@ -4,10 +4,8 @@ import httpx
 from bs4 import BeautifulSoup
 from fastapi import APIRouter, HTTPException
 
-from .const import STATUS_URL
-from .models import SystemStatus
-
-# TODO: Move this, uptime() and health() into the system router.
+from ..const import STATUS_URL
+from ..models import SystemStatus
 
 router = APIRouter()
 

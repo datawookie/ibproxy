@@ -8,7 +8,7 @@ import ibauth
 
 from . import rate
 from .const import DATETIME_FMT
-from .status import get_system_status
+from .system.status import get_system_status
 
 # Seconds between tickling the IBKR API.
 #

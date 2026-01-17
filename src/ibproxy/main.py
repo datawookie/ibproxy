@@ -23,11 +23,8 @@ from ibauth.timing import AsyncTimer
 from . import rate
 from .const import API_HOST, API_PORT, HEADERS, JOURNAL_DIR, VERSION
 from .middleware.request_id import RequestIdMiddleware
-from .models import Health
-from .status import router as status_router
 from .system import router as system_router
 from .tickle import TICKLE_INTERVAL, TickleMode, tickle_loop
-from .uptime import router as uptime_router
 from .util import logging_level
 
 LOGGING_CONFIG_PATH = Path(__file__).parent / "logging" / "logging.yaml"
@@ -102,31 +99,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="IBKR Proxy Service", version=VERSION, lifespan=lifespan)
 
-# TODO: Just a single system router that handles all of these endpoints.
-app.include_router(status_router, prefix="/status", tags=["system"])
-app.include_router(system_router, prefix="/reset", tags=["system"])
-app.include_router(uptime_router, prefix="/uptime", tags=["system"])
+app.include_router(system_router)
 
 app.add_middleware(RequestIdMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=100, compresslevel=5)
-
-
-@app.get(
-    "/health",
-    tags=["system"],
-    summary="Proxy Health Check",
-    description="Retrieve the health status of the proxy.",
-    response_model=Health,
-)  # type: ignore[misc]
-async def health() -> Health:
-    result = {"status": "degraded"}
-    if auth is not None:
-        if not auth.authenticated:
-            result = {"status": "not authenticated"}
-        elif getattr(auth, "bearer_token", None):
-            result = {"status": "ok"}
-
-    return Health(**result)
 
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])  # type: ignore[misc]
