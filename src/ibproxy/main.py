@@ -25,6 +25,7 @@ from .const import API_HOST, API_PORT, HEADERS, JOURNAL_DIR, VERSION
 from .middleware.request_id import RequestIdMiddleware
 from .models import Health
 from .status import router as status_router
+from .system import router as system_router
 from .tickle import TICKLE_INTERVAL, TickleMode, tickle_loop
 from .uptime import router as uptime_router
 from .util import logging_level
@@ -101,7 +102,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="IBKR Proxy Service", version=VERSION, lifespan=lifespan)
 
+# TODO: Just a single system router that handles all of these endpoints.
 app.include_router(status_router, prefix="/status", tags=["system"])
+app.include_router(system_router, prefix="/reset", tags=["system"])
 app.include_router(uptime_router, prefix="/uptime", tags=["system"])
 
 app.add_middleware(RequestIdMiddleware)
