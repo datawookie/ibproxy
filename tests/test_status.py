@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from httpx import Response
 
 from ibproxy.main import app  # import your FastAPI app
-from ibproxy.status import STATUS_COLOURS, get_system_status
+from ibproxy.system.status import STATUS_COLOURS, get_system_status
 
 HTML_TEMPLATE = """
 <table cellpadding="1" cellspacing="1" width="95%" class="TableOutline">
@@ -49,8 +49,8 @@ async def test_get_system_status(colour_hex, expected):
 
 
 def test_status_endpoint(monkeypatch):
-    from ibproxy import status as status_module
     from ibproxy.models import SystemStatus
+    from ibproxy.system import status as status_module
 
     dummy_status = SystemStatus(label="Mock Status", colour="💚")
 

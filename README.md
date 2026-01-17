@@ -89,7 +89,8 @@ To run tests:
 uv run pytest
 ```
 
-The integration tests require a running proxy. To run those:
+The integration tests require a running proxy. To run those, first launch a
+proxy process and then run:
 
 ```bash
 uv run pytest -m integration

@@ -12,7 +12,7 @@ from freezegun import freeze_time
 import ibproxy.const as constmod
 import ibproxy.main as appmod
 import ibproxy.rate as ratemod
-from ibproxy.status import STATUS_COLOURS
+from ibproxy.system.status import STATUS_COLOURS
 
 
 class _MockAuth:

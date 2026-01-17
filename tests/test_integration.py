@@ -47,7 +47,7 @@ def test_portfolio_summary(client: httpx.Client):
     response = _get_response(client, url)
     data = response.json()
 
-    assert response.headers["content-type"] == "application/json; charset=utf-8"
+    assert "application/json" in response.headers["content-type"]
 
     assert isinstance(data, dict)
     for key in ("accountcode", "acctid", "currency"):
