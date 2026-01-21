@@ -110,7 +110,7 @@ async def get_system_status(timeout: float = 10) -> SystemStatus:
             },
         },
     },
-)  # type: ignore[misc]
+)  # type: ignore[untyped-decorator]
 async def status() -> SystemStatus:
     try:
         return await get_system_status()

@@ -10,7 +10,7 @@ router = APIRouter()
     summary="Proxy Health Check",
     description="Retrieve the health status of the proxy.",
     response_model=Health,
-)  # type: ignore[misc]
+)  # type: ignore[untyped-decorator]
 async def health(request: Request) -> Health:
     auth = getattr(request.app.state, "auth", None)
 

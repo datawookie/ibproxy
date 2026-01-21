@@ -25,7 +25,7 @@ router = APIRouter()
             },
         },
     },
-)  # type: ignore[misc]
+)  # type: ignore[untyped-decorator]
 async def uptime(request: Request) -> Uptime:
     uptime_duration = datetime.now(UTC) - request.app.state.started_at
 

@@ -39,12 +39,6 @@ async def tickle_loop(app: object) -> None:
     The auth object and tickle parameters are fetched from app.state on each
     iteration, allowing the loop to use current values even if they're updated.
     """
-    mode: TickleMode = app.state.args.tickle_mode  # type: ignore[attr-defined]
-    interval: float = app.state.args.tickle_interval  # type: ignore[attr-defined]
-
-    if mode == TickleMode.OFF:
-        logging.warning("⛔ Tickle loop disabled.")
-        return
 
     async def should_tickle() -> tuple[bool, float]:
         mode = app.state.args.tickle_mode  # type: ignore[attr-defined]
@@ -61,9 +55,14 @@ async def tickle_loop(app: object) -> None:
 
         return True, interval
 
-    logging.info("🔁 Start tickle loop (mode='%s', interval=%.1f s).", mode, interval)
     delay: float = 0
     while True:
+        mode = app.state.args.tickle_mode  # type: ignore[attr-defined]
+
+        if mode == TickleMode.OFF:
+            logging.warning("⛔ Tickle loop disabled.")
+            return
+
         logging.debug("⏳ Sleep: %.1f s", delay)
         await asyncio.sleep(delay)
 
@@ -71,9 +70,8 @@ async def tickle_loop(app: object) -> None:
 
         try:
             auth = app.state.auth  # type: ignore[attr-defined]
+            logging.debug(f"🆔 Authentication object ID: {id(auth)}")
             await log_status()
-
-            logging.info(f"ID {id(auth)}")
             should, delay = await should_tickle()
             if should:
                 await auth.tickle()
