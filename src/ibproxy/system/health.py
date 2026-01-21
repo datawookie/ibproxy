@@ -12,7 +12,7 @@ router = APIRouter()
     response_model=Health,
 )  # type: ignore[misc]
 async def health(request: Request) -> Health:
-    from ..main import auth
+    auth = getattr(request.app.state, "auth", None)
 
     result = {"status": "degraded"}
     if auth is not None:

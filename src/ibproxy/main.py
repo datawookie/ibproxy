@@ -8,7 +8,6 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 from urllib.parse import urljoin
 
 import httpx
@@ -44,7 +43,6 @@ warnings.filterwarnings(
 
 # These are initialised in main().
 #
-auth: Optional[ibauth.IBAuth] = None
 tickle = None
 TICKLE_MODE: TickleMode = TickleMode.ALWAYS
 
@@ -53,7 +51,7 @@ TICKLE_MODE: TickleMode = TickleMode.ALWAYS
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    global auth, tickle
+    global tickle
 
     app.state.started_at = datetime.now(UTC)
 
@@ -65,15 +63,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         if error:
             logging.exception("Tickle task terminated with exception: %s", error)
 
-    auth = ibauth.auth_from_yaml(app.state.args.config)
+    app.state.auth = ibauth.auth_from_yaml(app.state.args.config)
     try:
-        await auth.connect()
+        await app.state.auth.connect()
     except Exception:
         logging.error("🚨 Authentication failed!")
 
     tickle = asyncio.create_task(
         tickle_loop(
-            auth,
+            app.state.auth,
             app.state.args.tickle_mode,
             app.state.args.tickle_interval,
         )
@@ -92,7 +90,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # Will be called after the done callback has run.
         pass
 
-    await auth.logout()
+    await app.state.auth.logout()
 
 
 # ==============================================================================
@@ -108,7 +106,7 @@ app.add_middleware(GZipMiddleware, minimum_size=100, compresslevel=5)
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])  # type: ignore[misc]
 async def proxy(path: str, request: Request) -> Response:
     method = request.method
-    url = urljoin(f"https://{auth.domain}/", path)  # type: ignore[union-attr]
+    url = urljoin(f"https://{request.app.state.auth.domain}/", path)  # type: ignore[union-attr]
     logging.info(f"🔵 Request: [{request.state.request_id}] {method} {url}")
 
     try:
@@ -134,7 +132,7 @@ async def proxy(path: str, request: Request) -> Response:
                 for k, v in params.items():
                     logging.debug(f"  - {k}: {v}")
 
-        headers["Authorization"] = f"Bearer {auth.bearer_token}"  # type: ignore[union-attr]
+        headers["Authorization"] = f"Bearer {request.app.state.auth.bearer_token}"  # type: ignore[union-attr]
 
         # Forward request.
         async with httpx.AsyncClient() as client:
