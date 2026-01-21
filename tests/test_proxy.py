@@ -32,7 +32,7 @@ def _clean_rate_and_auth(monkeypatch):
     # fresh rate state for each test
     ratemod.times.clear()
     # set a mock auth so routes can build the upstream URL/header
-    monkeypatch.setattr(appmod, "auth", _MockAuth())
+    monkeypatch.setattr(appmod.app.state, "auth", _MockAuth())
     yield
     ratemod.times.clear()
 

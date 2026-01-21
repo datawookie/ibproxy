@@ -16,6 +16,8 @@ router = APIRouter()
 )  # type: ignore[misc]
 async def reset(request: Request) -> SystemStatus:
     try:
+        # TODO: This is not updating the main authentication instance though!!
+        # TODO: Check that tickle loop uses the updated instance.
         auth = ibauth.auth_from_yaml(request.app.state.args.config)
         try:
             await auth.connect()

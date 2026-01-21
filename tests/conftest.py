@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import httpx
@@ -16,6 +17,11 @@ def client(monkeypatch) -> TestClient:
         return
 
     monkeypatch.setattr(appmod, "tickle_loop", _noop_loop)
+
+    # Ensure app state has args and started_at for tests that expect them.
+    appmod.app.state.args = SimpleNamespace(config="config.yaml", tickle_mode="always", tickle_interval=0.01)
+    appmod.app.state.started_at = datetime.now(UTC)
+
     return TestClient(appmod.app)
 
 
@@ -30,8 +36,8 @@ def dummy_response() -> httpx.Response:
 
 @pytest.fixture(autouse=True)
 def fake_auth(monkeypatch):
-    fake = SimpleNamespace(domain="api.test", bearer_token="token123")
-    monkeypatch.setattr("ibproxy.main.auth", fake)
+    fake = SimpleNamespace(domain="api.test", bearer_token="token123", authenticated=True)
+    appmod.app.state.auth = fake
     return fake
 
 

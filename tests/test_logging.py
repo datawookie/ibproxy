@@ -22,6 +22,7 @@ async def test_proxy_logs_headers_and_params(mock_request, caplog: pytest.LogCap
         "path": "/test",
         "headers": [(b"content-type", b"application/json"), (b"host", b"example.com")],
         "query_string": b"foo=bar",
+        "app": ibproxy.app,
     }
     request = Request(scope)
     request._body = b'{"x":1}'

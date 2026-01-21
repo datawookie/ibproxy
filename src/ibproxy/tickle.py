@@ -4,7 +4,6 @@ from datetime import datetime
 from enum import Enum
 
 import httpx
-import ibauth
 
 from . import rate
 from .const import DATETIME_FMT
@@ -33,17 +32,23 @@ async def log_status() -> None:
         logging.info("Status: %s %s", status.colour, status.label)
 
 
-async def tickle_loop(
-    auth: ibauth.IBAuth, mode: TickleMode = TickleMode.ALWAYS, interval: float = TICKLE_INTERVAL
-) -> None:
+async def tickle_loop(app: object) -> None:
     """
     Periodically call auth.tickle() while the app is running.
+
+    The auth object and tickle parameters are fetched from app.state on each
+    iteration, allowing the loop to use current values even if they're updated.
     """
+    mode: TickleMode = app.state.args.tickle_mode  # type: ignore[attr-defined]
+    interval: float = app.state.args.tickle_interval  # type: ignore[attr-defined]
+
     if mode == TickleMode.OFF:
         logging.warning("⛔ Tickle loop disabled.")
         return
 
     async def should_tickle() -> tuple[bool, float]:
+        mode = app.state.args.tickle_mode  # type: ignore[attr-defined]
+        interval = app.state.args.tickle_interval  # type: ignore[attr-defined]
         if mode == TickleMode.ALWAYS:
             return True, interval
         else:
@@ -65,8 +70,10 @@ async def tickle_loop(
         await rate.log()
 
         try:
+            auth = app.state.auth  # type: ignore[attr-defined]
             await log_status()
 
+            logging.info(f"ID {id(auth)}")
             should, delay = await should_tickle()
             if should:
                 await auth.tickle()

@@ -13,6 +13,12 @@ import ibproxy.tickle as ticklemod
 from .conftest import DummyAuth, DummyAuthFlaky
 
 
+def make_mock_app(auth: Any, tickle_mode: str = "always", tickle_interval: float = 0.01) -> Any:
+    """Create a mock app with state.args and state.auth."""
+    args = Mock(tickle_mode=tickle_mode, tickle_interval=tickle_interval)
+    return type("obj", (object,), {"state": type("obj", (object,), {"auth": auth, "args": args})()})()
+
+
 async def empty_status():
     return Mock(colour="<>", label="<label>")
 
@@ -42,8 +48,9 @@ async def test_tickle_loop_calls_auth(monkeypatch):
     monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 
     auth = DummyAuth()
+    app = make_mock_app(auth, "always", 0.01)
 
-    task = asyncio.create_task(appmod.tickle_loop(auth, "always", 0.01))
+    task = asyncio.create_task(appmod.tickle_loop(app))
     # Time to run several iterations.
     await asyncio.sleep(0.05)
     task.cancel()
@@ -59,9 +66,10 @@ async def test_tickle_loop_logs_error(monkeypatch, caplog):
     monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 
     auth = DummyAuthFlaky()
+    app = make_mock_app(auth, "always", 0.01)
 
     caplog.set_level(logging.DEBUG)
-    task = asyncio.create_task(appmod.tickle_loop(auth, "always", 0.01))
+    task = asyncio.create_task(appmod.tickle_loop(app))
     await asyncio.sleep(0.05)
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
@@ -77,7 +85,9 @@ async def test_tickle_loop_logs_error(monkeypatch, caplog):
 @patch("ibproxy.main.ibauth.auth_from_yaml")
 @patch("ibproxy.main.argparse.ArgumentParser.parse_args")
 async def test_lifespan_starts_and_cancels(mock_parse_args, mock_auth_from_yaml, monkeypatch):
-    mock_parse_args.return_value = Mock(debug=False, port=constmod.API_PORT, config="config.yaml", tickle_interval=0.01)
+    mock_parse_args.return_value = Mock(
+        debug=False, port=constmod.API_PORT, config="config.yaml", tickle_interval=0.01, tickle_mode="always"
+    )
     appmod.app.state.args = mock_parse_args.return_value
 
     auth = DummyAuth()
@@ -106,7 +116,9 @@ async def test_lifespan_tickle_exception(
     caplog.set_level(logging.INFO)
 
     # Pretend --debug not passed.
-    mock_parse_args.return_value = Mock(debug=False, port=constmod.API_PORT, config="config.yaml")
+    mock_parse_args.return_value = Mock(
+        debug=False, port=constmod.API_PORT, config="config.yaml", tickle_mode="always", tickle_interval=0.01
+    )
     appmod.app.state.args = mock_parse_args.return_value
 
     auth = DummyAuth()
@@ -141,8 +153,9 @@ async def test_tickle_auto_skips_when_latest_recent(monkeypatch, caplog: pytest.
     monkeypatch.setattr(appmod.rate, "latest", lambda: latest)
 
     auth = DummyAuth()
+    app = make_mock_app(auth, "auto", 0.2)
 
-    task = asyncio.create_task(appmod.tickle_loop(auth, "auto"))
+    task = asyncio.create_task(appmod.tickle_loop(app))
     # Wait long enough for the loop to call tickle once.
     await asyncio.sleep(0.01)
     task.cancel()
@@ -165,8 +178,9 @@ async def test_tickle_auto_calls_when_latest_old(monkeypatch, caplog: pytest.Log
     monkeypatch.setattr(appmod.rate, "latest", lambda: latest)
 
     auth = DummyAuth()
+    app = make_mock_app(auth, "auto", 0.05)
 
-    task = asyncio.create_task(appmod.tickle_loop(auth, "auto", 0.05))
+    task = asyncio.create_task(appmod.tickle_loop(app))
     # Wait long enough for the loop to call tickle once.
     await asyncio.sleep(0.2)
     task.cancel()
@@ -183,10 +197,11 @@ async def test_tickle_off(monkeypatch, caplog: pytest.LogCaptureFixture):
     monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 
     auth = DummyAuth()
+    app = make_mock_app(auth, "off", 0.05)
 
     caplog.set_level(logging.INFO)
 
-    task = asyncio.create_task(appmod.tickle_loop(auth, "off"))
+    task = asyncio.create_task(appmod.tickle_loop(app))
     # Wait long enough for the loop to call tickle once.
     await asyncio.sleep(0.2)
     task.cancel()
@@ -201,8 +216,9 @@ async def test_tickle_always(monkeypatch, caplog: pytest.LogCaptureFixture):
     monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 
     auth = DummyAuth()
+    app = make_mock_app(auth, "always", 0.05)
 
-    task = asyncio.create_task(appmod.tickle_loop(auth, "always"))
+    task = asyncio.create_task(appmod.tickle_loop(app))
     # Wait long enough for the loop to call tickle once.
     await asyncio.sleep(0.2)
     task.cancel()
@@ -219,8 +235,9 @@ async def test_tickle_status_timeout(timeout_get_system_status, monkeypatch, cap
     monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 
     auth = DummyAuth()
+    app = make_mock_app(auth, "always", 0.05)
 
-    task = asyncio.create_task(appmod.tickle_loop(auth, "always", 0.05))
+    task = asyncio.create_task(appmod.tickle_loop(app))
     # Wait long enough for the loop to call tickle once.
     await asyncio.sleep(0.2)
     task.cancel()

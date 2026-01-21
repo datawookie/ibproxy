@@ -69,13 +69,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception:
         logging.error("🚨 Authentication failed!")
 
-    tickle = asyncio.create_task(
-        tickle_loop(
-            app.state.auth,
-            app.state.args.tickle_mode,
-            app.state.args.tickle_interval,
-        )
-    )
+    tickle = asyncio.create_task(tickle_loop(app))
     tickle.add_done_callback(_tickle_done)
 
     yield
@@ -155,6 +149,11 @@ async def proxy(path: str, request: Request) -> Response:
 
         # TODO: Could try to infer content type if header is missing.
         content_type = headers.get("content-type")
+
+        # Ensure a content-length header is present if upstream didn't supply one.
+        # This keeps tests and some clients happy when we strip upstream headers.
+        if "content-length" not in headers:
+            headers["content-length"] = str(len(response.content))
 
         await rate.log(path)
 
