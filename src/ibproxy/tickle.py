@@ -8,6 +8,7 @@ import httpx
 from . import rate
 from .const import DATETIME_FMT
 from .system.status import get_system_status
+from .util import cpu_percent, disk_percent, ram_percent, swap_percent
 
 # Seconds between tickling the IBKR API.
 #
@@ -84,3 +85,12 @@ async def tickle_loop(app: object) -> None:
             # Backoff a bit so repeated failures don't spin the loop.
             await asyncio.sleep(TICKLE_MIN_SLEEP)
             continue
+    
+        cpu, ram, swap, disk = await asyncio.gather(
+            cpu_percent(),
+            ram_percent(),
+            swap_percent(),
+            disk_percent(),
+        )
+
+        logging.info(f"- CPU: {cpu:5.1f}% | RAM: {ram:5.1f}% | Swap: {swap:5.1f}% | Disk: {disk:5.1f}%")
