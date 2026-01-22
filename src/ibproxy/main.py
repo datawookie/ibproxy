@@ -97,10 +97,10 @@ app.add_middleware(RequestIdMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=100, compresslevel=5)
 
 
-@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])  # type: ignore[misc]
+@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])  # type: ignore[untyped-decorator]
 async def proxy(path: str, request: Request) -> Response:
     method = request.method
-    url = urljoin(f"https://{request.app.state.auth.domain}/", path)  # type: ignore[union-attr]
+    url = urljoin(f"https://{request.app.state.auth.domain}/", path)
     logging.info(f"🔵 Request: [{request.state.request_id}] {method} {url}")
 
     try:
@@ -126,7 +126,7 @@ async def proxy(path: str, request: Request) -> Response:
                 for k, v in params.items():
                     logging.debug(f"  - {k}: {v}")
 
-        headers["Authorization"] = f"Bearer {request.app.state.auth.bearer_token}"  # type: ignore[union-attr]
+        headers["Authorization"] = f"Bearer {request.app.state.auth.bearer_token}"
 
         # Forward request.
         async with httpx.AsyncClient() as client:
@@ -157,18 +157,18 @@ async def proxy(path: str, request: Request) -> Response:
 
         await rate.log(path)
 
-        json_path = JOURNAL_DIR / (
-            filename := now.strftime(f"%Y%m%d/%Y%m%d-%H%M%S-{request.state.request_id}.json.bz2")
-        )
-        #
-        json_path.parent.mkdir(parents=True, exist_ok=True)
-
         def _write_journal() -> None:
             """
             Write request/response journal to a compressed JSON file.
 
             This is a blocking function so it needs to be run in a separate thread.
             """
+            json_path = JOURNAL_DIR / (
+                filename := now.strftime(f"%Y%m%d/%Y%m%d-%H%M%S-{request.state.request_id}.json.bz2")
+            )
+            #
+            json_path.parent.mkdir(parents=True, exist_ok=True)
+
             if not content_type:
                 logging.warning("🚨 No content type in response!")
             if content_type and content_type.startswith("application/json"):
@@ -195,7 +195,8 @@ async def proxy(path: str, request: Request) -> Response:
                 }
                 json.dump(dump, f, indent=2)
 
-        await asyncio.to_thread(_write_journal)
+        if JOURNAL_DIR:
+            await asyncio.to_thread(_write_journal)
 
         if response.is_error:
             # Upstream responded with 4xx/5xx status.
@@ -266,6 +267,11 @@ def main() -> None:
         default=TICKLE_INTERVAL,
         help=f"Interval (seconds) between tickles (default: {TICKLE_INTERVAL}).",
     )
+    parser.add_argument(
+        "--disable-journal",
+        action="store_true",
+        help="Disable writing details of each request/response to a compressed JSON file.",
+    )
     args = parser.parse_args()
 
     app.state.args = args
@@ -273,6 +279,10 @@ def main() -> None:
     if args.debug:
         LOGGING_CONFIG["root"]["level"] = "DEBUG"  # pragma: no cover
         LOGGING_CONFIG["loggers"]["ibauth"]["level"] = "DEBUG"  # pragma: no cover
+
+    if args.disable_journal:
+        global JOURNAL_DIR
+        JOURNAL_DIR = None  # type: ignore[assignment]
 
     logging.config.dictConfig(LOGGING_CONFIG)
 
