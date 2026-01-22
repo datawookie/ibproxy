@@ -18,6 +18,9 @@ async def reset(request: Request) -> SystemStatus:
     """
     Build a fresh auth and replace the instance on app state so the tickle loop and proxy will immediately use it.
     """
+    # Close existing connection.
+    await request.app.state.auth.logout()
+
     try:
         auth = ibauth.auth_from_yaml(request.app.state.args.config)
         request.app.state.auth = auth

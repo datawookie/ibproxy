@@ -34,6 +34,21 @@ this is a good thing.
 There are ways that you can expose the proxy to the outside world. For the purpose of illustration suppose that you are running the proxy on an EC2
 instance at 3.218.141.190.
 
+## Sending a Request
+
+Just send your request to the proxy as if you were sending it to the IBKR API. For example, if you
+were going to request
+
+```bash
+curl "http://api.ibkr.com/v1/api/iserver/accounts"
+```
+
+then do this instead
+
+```bash
+curl "http://127.0.0.1:9000/v1/api/iserver/accounts"
+```
+
 ### NGINX
 
 Unless you set up authentication this would definitely open up a can of worms.
