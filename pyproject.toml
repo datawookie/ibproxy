@@ -13,7 +13,7 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.119.0",
     "uvicorn>=0.38.0",
-    "ibauth>=0.1.1",
+    "ibauth>=0.1.2",
     "httpx>=0.28.1",
     "curlify2>=2.0.0",
     "bs4>=0.0.2",

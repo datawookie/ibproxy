@@ -54,6 +54,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     global tickle
 
     # Event which is set during a reset.
+    #
+    # This uses the Gatekeeper Pattern to block new requests while a reset is in progress.
+    #
+    # The event is lightweight. It simply manages list of paused coroutines.
+    #
     app.state.gate = asyncio.Event()
     app.state.gate.set()
 
@@ -103,6 +108,9 @@ app.add_middleware(GZipMiddleware, minimum_size=100, compresslevel=5)
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])  # type: ignore[untyped-decorator]
 async def proxy(path: str, request: Request) -> Response:
+    # Check if the gate is open. If it is then this will return immediately. If not then
+    # it will wait until the gate is opened again.
+    #
     await request.app.state.gate.wait()
 
     method = request.method
