@@ -53,6 +53,10 @@ TICKLE_MODE: TickleMode = TickleMode.ALWAYS
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     global tickle
 
+    # Event which is set during a reset.
+    app.state.gate = asyncio.Event()
+    app.state.gate.set()
+
     app.state.started_at = datetime.now(UTC)
 
     def _tickle_done(task: asyncio.Task[None]) -> None:
@@ -99,6 +103,8 @@ app.add_middleware(GZipMiddleware, minimum_size=100, compresslevel=5)
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])  # type: ignore[untyped-decorator]
 async def proxy(path: str, request: Request) -> Response:
+    await request.app.state.gate.wait()
+
     method = request.method
     url = urljoin(f"https://{request.app.state.auth.domain}/", path)
     logging.info(f"🔵 Request: [{request.state.request_id}] {method} {url}")
