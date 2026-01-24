@@ -17,6 +17,10 @@ STATUS_COLOURS = {
     "#999999": SystemStatus(label="Resolved", colour="⬜"),
 }
 
+# Text in top row of status table.
+#
+STATUS_TABLE_REGEX = r"((System|Exchange) Availability|Trading Operations)"
+
 
 async def get_system_status(timeout: float = 10) -> SystemStatus:
     """
@@ -61,7 +65,7 @@ async def get_system_status(timeout: float = 10) -> SystemStatus:
     try:
         # Other tables on the page. Most reliable way to find the right one.
         #
-        availability = soup.find("td", string=re.compile("(System|Exchange) Availability")).parent.parent
+        availability = soup.find("td", string=re.compile(STATUS_TABLE_REGEX)).parent.parent
 
         colour = availability.select_one("tr.odd > td.centeritem[style]")["style"].split(":")[-1].strip()
 
