@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Request
 from ibauth import IBAuth
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
 
 from ..models import SystemStatus
 from .status import get_system_status
@@ -39,8 +39,12 @@ async def reset(request: Request) -> SystemStatus:
         logging.warning("⛔ Close connection to IBKR API.")
         await request.app.state.auth.logout()
         logging.warning("⏳ Wait for session to disconnect.")
-        await _wait_for_disconnected(request.app.state.auth)
-        logging.info("✅ Disconnected.")
+        try:
+            await _wait_for_disconnected(request.app.state.auth)
+        except RetryError:
+            logging.warning("🚨 Failed to disconnect.")
+        else:
+            logging.info("✅ Disconnected.")
 
         logging.info("🔀 Connect to IBKR API.")
         await request.app.state.auth.connect()
