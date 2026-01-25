@@ -84,13 +84,14 @@ async def tickle_loop(app: object) -> None:
             logging.error("🚨 Tickle failed.")
             # Backoff a bit so repeated failures don't spin the loop.
             await asyncio.sleep(TICKLE_MIN_SLEEP)
-            continue
-    
-        cpu, ram, swap, disk = await asyncio.gather(
-            cpu_percent(),
-            ram_percent(),
-            swap_percent(),
-            disk_percent(),
-        )
 
-        logging.info(f"- CPU: {cpu:5.1f}% | RAM: {ram:5.1f}% | Swap: {swap:5.1f}% | Disk: {disk:5.1f}%")
+        try:
+            cpu, ram, swap, disk = await asyncio.gather(
+                cpu_percent(),
+                ram_percent(),
+                swap_percent(),
+                disk_percent(),
+            )
+            logging.info(f"- CPU: {cpu:5.1f}% | RAM: {ram:5.1f}% | Swap: {swap:5.1f}% | Disk: {disk:5.1f}%")
+        except Exception:
+            logging.error("🚨 Failed to collect system metrics.")

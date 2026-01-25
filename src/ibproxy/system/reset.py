@@ -39,7 +39,7 @@ async def _reconnect(state: State) -> SystemStatus:
         HTTPException: With status code 502 if a RuntimeError occurs during reconnection.
     """
     # Close the gate (block new requests).
-    logging.warning("🚧 Stop processing new requests.")
+    logging.warning("🚧 Stop processing requests.")
     state.gate.clear()
 
     try:
@@ -63,7 +63,7 @@ async def _reconnect(state: State) -> SystemStatus:
         raise HTTPException(status_code=502, detail=str(error)) from error
     finally:
         # Open the gate (allow new requests).
-        logging.warning("🚧 Resume processing new requests.")
+        logging.warning("🚧 Resume processing requests.")
         state.gate.set()
 
 
