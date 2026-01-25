@@ -55,8 +55,11 @@ async def _reconnect(state: State) -> SystemStatus:
             logging.info("✅ Disconnected.")
 
         logging.info("🔀 Connect to IBKR API.")
-        await state.auth.connect()
-        logging.info("✅ Connected.")
+        try:
+            await state.auth.connect()
+            logging.info("✅ Connected.")
+        except Exception:
+            logging.error("🚨 Authentication failed!")
 
         return await get_system_status()
     except RuntimeError as error:

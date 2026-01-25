@@ -1,8 +1,10 @@
+import asyncio
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import httpx
 import pytest
+from fastapi import Request
 from fastapi.testclient import TestClient
 
 import ibproxy.main as appmod
@@ -22,6 +24,11 @@ def client(monkeypatch) -> TestClient:
     appmod.app.state.args = SimpleNamespace(config="config.yaml", tickle_mode="always", tickle_interval=0.01)
     appmod.app.state.started_at = datetime.now(UTC)
 
+    # Ensure gate exists for tests that call the app directly.
+    gate = asyncio.Event()
+    gate.set()
+    appmod.app.state.gate = gate
+
     return TestClient(appmod.app)
 
 
@@ -36,9 +43,56 @@ def dummy_response() -> httpx.Response:
 
 @pytest.fixture(autouse=True)
 def fake_auth(monkeypatch):
-    fake = SimpleNamespace(domain="api.test", bearer_token="token123", authenticated=True)
-    appmod.app.state.auth = fake
-    return fake
+    auth = DummyAuth(authenticated=True)
+    auth.domain = "api.test"
+    appmod.app.state.auth = auth
+    return auth
+
+
+@pytest.fixture
+def mock_request() -> Request:
+    """
+    Create a mock Request for tests.
+
+    Usage:
+        # Default request
+        request = mock_request
+
+        # Or create custom request by passing parameters to factory
+        request = mock_request(query_string=b"foo=bar", headers=[(b"content-type", b"application/json")])
+    """
+
+    def _update(
+        method: str = "GET",
+        path: str = "/test",
+        query_string: bytes = b"",
+        headers: list = None,
+    ) -> Request:
+        if headers is None:
+            headers = []
+
+        scope = {
+            "type": "http",
+            "method": method,
+            "path": path,
+            "headers": headers,
+            "query_string": query_string,
+            "app": appmod.app,
+        }
+        request = Request(scope)
+        request.state.request_id = REQUEST_ID
+
+        # Initialize the gate Event (normally done in lifespan).
+        gate = asyncio.Event()
+        gate.set()
+        request.app.state.gate = gate
+
+        return request
+
+    # Return the factory function, but also make it callable as the default request
+    request = _update()
+    request.update = _update
+    return request
 
 
 class DummyAuth:
@@ -53,7 +107,13 @@ class DummyAuth:
     async def logout(self):
         pass
 
-    def tickle(self):
+    async def status(self):
+        return SimpleNamespace(connected=False)
+
+    def is_connected(self):
+        return self.authenticated
+
+    async def tickle(self):
         self.calls += 1
 
 
@@ -62,7 +122,7 @@ class DummyAuthFlaky(DummyAuth):
         super().__init__()
         self.raised = False
 
-    def tickle(self):
+    async def tickle(self):
         self.calls += 1
         if not self.raised:
             self.raised = True

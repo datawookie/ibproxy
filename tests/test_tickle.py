@@ -43,8 +43,18 @@ def timeout_get_system_status(monkeypatch: Any) -> Iterator[None]:
     yield
 
 
+@pytest.fixture
+def mock_system_metrics(monkeypatch: Any) -> Iterator[None]:
+    """Mock system metrics to speed up tickle loop tests."""
+    monkeypatch.setattr(ticklemod, "cpu_percent", AsyncMock(return_value=10.0))
+    monkeypatch.setattr(ticklemod, "ram_percent", AsyncMock(return_value=20.0))
+    monkeypatch.setattr(ticklemod, "swap_percent", AsyncMock(return_value=5.0))
+    monkeypatch.setattr(ticklemod, "disk_percent", AsyncMock(return_value=30.0))
+    yield
+
+
 @pytest.mark.asyncio
-async def test_tickle_loop_calls_auth(monkeypatch):
+async def test_tickle_loop_calls_auth(monkeypatch, mock_system_metrics):
     monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 
     auth = DummyAuth()
@@ -62,7 +72,7 @@ async def test_tickle_loop_calls_auth(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_tickle_loop_logs_error(monkeypatch, caplog):
+async def test_tickle_loop_logs_error(monkeypatch, caplog, mock_system_metrics):
     monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 
     auth = DummyAuthFlaky()
@@ -167,7 +177,7 @@ async def test_tickle_auto_skips_when_latest_recent(monkeypatch, caplog: pytest.
 
 
 @pytest.mark.asyncio
-async def test_tickle_auto_calls_when_latest_old(monkeypatch, caplog: pytest.LogCaptureFixture):
+async def test_tickle_auto_calls_when_latest_old(monkeypatch, caplog: pytest.LogCaptureFixture, mock_system_metrics):
     """
     If rate.latest() returns a timestamp older than TICKLE_INTERVAL, auth.tickle()
     should be invoked.
@@ -182,7 +192,7 @@ async def test_tickle_auto_calls_when_latest_old(monkeypatch, caplog: pytest.Log
 
     task = asyncio.create_task(appmod.tickle_loop(app))
     # Wait long enough for the loop to call tickle once.
-    await asyncio.sleep(0.2)
+    await asyncio.sleep(0.05)
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await task

@@ -2,31 +2,26 @@ import re
 from unittest.mock import patch
 
 import pytest
-from fastapi import Request
 from fastapi.testclient import TestClient
 
 import ibproxy.main as ibproxy
 
-from .conftest import REQUEST_ID
-
 
 @pytest.mark.asyncio
 @patch("ibproxy.main.httpx.AsyncClient.request")
-async def test_proxy_logs_headers_and_params(mock_request, caplog: pytest.LogCaptureFixture, dummy_response):
+async def test_proxy_logs_headers_and_params(
+    mock_http_request, caplog: pytest.LogCaptureFixture, dummy_response, mock_request
+):
     """Proxy should log headers and query params when debug logging is enabled."""
-    mock_request.return_value = dummy_response
+    mock_http_request.return_value = dummy_response
 
-    scope = {
-        "type": "http",
-        "method": "POST",
-        "path": "/test",
-        "headers": [(b"content-type", b"application/json"), (b"host", b"example.com")],
-        "query_string": b"foo=bar",
-        "app": ibproxy.app,
-    }
-    request = Request(scope)
+    # Create request with query params and headers using the factory
+    request = mock_request.update(
+        method="POST",
+        query_string=b"foo=bar",
+        headers=[(b"content-type", b"application/json"), (b"host", b"example.com")],
+    )
     request._body = b'{"x":1}'
-    request.state.request_id = REQUEST_ID
 
     caplog.set_level("DEBUG")
 
@@ -39,10 +34,7 @@ async def test_proxy_logs_headers_and_params(mock_request, caplog: pytest.LogCap
     assert any("foo" in m and "bar" in m for m in logs)
 
 
-client = TestClient(ibproxy.app)
-
-
-def test_proxy_logs_request(caplog: pytest.LogCaptureFixture, dummy_response):
+def test_proxy_logs_request(caplog: pytest.LogCaptureFixture, dummy_response, client: TestClient):
     with patch("ibproxy.main.httpx.AsyncClient.request", return_value=dummy_response):
         caplog.set_level("INFO")
         resp = client.get("/test")
