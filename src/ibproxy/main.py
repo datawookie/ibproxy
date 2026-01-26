@@ -22,7 +22,7 @@ from ibauth.timing import AsyncTimer
 from . import rate
 from .const import API_HOST, API_PORT, HEADERS, JOURNAL_DIR, VERSION
 from .middleware.request_id import RequestIdMiddleware
-from .rate import rate_loop
+from .rate import enforce_rate_limit, rate_loop
 from .system import router as system_router
 from .tickle import TICKLE_INTERVAL, TickleMode, tickle_loop
 from .util import logging_level
@@ -122,6 +122,10 @@ app.add_middleware(GZipMiddleware, minimum_size=100, compresslevel=5)
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])  # type: ignore[untyped-decorator]
 async def proxy(path: str, request: Request) -> Response:
+    # Enforce rate limit.
+    #
+    await enforce_rate_limit()
+
     # Check if the gate is open. If it is then this will return immediately. If not then
     # it will wait until the gate is opened again.
     #

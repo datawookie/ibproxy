@@ -5,7 +5,7 @@ from collections import defaultdict, deque
 from datetime import UTC, datetime
 from threading import RLock
 
-from .const import RATE_LOG_INTERVAL
+from ..const import RATE_LOG_INTERVAL
 
 times: dict[str, deque[float]] = defaultdict(deque)
 
