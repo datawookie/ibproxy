@@ -73,6 +73,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             logging.exception("Tickle task terminated with exception: %s", error)
 
     app.state.auth = ibauth.auth_from_yaml(app.state.args.config)
+    app.state.client = httpx.AsyncClient(
+        timeout=30.0,
+        # TODO: Tune the connection limits for traffic profile.
+        limits=httpx.Limits(max_keepalive_connections=100, max_connections=200),
+    )
     try:
         await app.state.auth.connect()
     except Exception:
@@ -93,6 +98,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # Will be called after the done callback has run.
         pass
 
+    await app.state.client.aclose()
     await app.state.auth.logout()
 
 
@@ -143,18 +149,16 @@ async def proxy(path: str, request: Request) -> Response:
         headers["Authorization"] = f"Bearer {request.app.state.auth.bearer_token}"
 
         # Forward request.
-        async with httpx.AsyncClient() as client:
-            now = await rate.record(path)
-            async with AsyncTimer() as duration:
-                response = await client.request(
-                    method=method,
-                    url=url,
-                    content=body,
-                    headers={**headers, **HEADERS},
-                    params=params,
-                    timeout=30.0,
-                )
-            logging.info(f"⏳ Duration: {duration.duration:.3f} s")
+        now = await rate.record(path)
+        async with AsyncTimer() as duration:
+            response = await request.app.state.client.request(
+                method=method,
+                url=url,
+                content=body,
+                headers={**headers, **HEADERS},
+                params=params,
+            )
+        logging.info(f"⏳ Duration: {duration.duration:.3f} s")
 
         headers = dict(response.headers)
         # Remove headers from response. These will be replaced with correct values.
