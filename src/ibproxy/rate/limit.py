@@ -67,7 +67,7 @@ class LeakyBucket:
 _bucket = LeakyBucket(RATE_LIMIT, RATE_LIMIT_BURST)
 
 
-async def enforce_rate_limit() -> None:
+async def enforce_rate_limit(id: str) -> None:
     """
     Enforce the global rate limit using the leaky bucket algorithm.
 
@@ -80,7 +80,7 @@ async def enforce_rate_limit() -> None:
     acquired, wait_time = await _bucket.acquire(tokens=1.0)
 
     if not acquired:
-        logging.warning(f"⏳ Rate limit exceeded (wait {wait_time:.3f} s).")
+        logging.warning(f"⏳ [{id}] Rate limit exceeded (wait {wait_time:.3f} s).")
         await asyncio.sleep(wait_time)
         # Recursively call to acquire after waiting.
-        await enforce_rate_limit()
+        await enforce_rate_limit(id)

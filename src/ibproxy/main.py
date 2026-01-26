@@ -122,9 +122,11 @@ app.add_middleware(GZipMiddleware, minimum_size=100, compresslevel=5)
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])  # type: ignore[untyped-decorator]
 async def proxy(path: str, request: Request) -> Response:
+    id: str = request.state.request_id
+
     # Enforce rate limit.
     #
-    await enforce_rate_limit()
+    await enforce_rate_limit(id)
 
     # Check if the gate is open. If it is then this will return immediately. If not then
     # it will wait until the gate is opened again.
@@ -133,7 +135,7 @@ async def proxy(path: str, request: Request) -> Response:
 
     method = request.method
     url = urljoin(f"https://{request.app.state.auth.domain}/", path)
-    logging.info(f"🔵 Request: [{request.state.request_id}] {method} {url}")
+    logging.info(f"🔵 [{id}] Request: {method} {url}")
 
     try:
         # Get body, parameters and headers from request.
@@ -170,7 +172,7 @@ async def proxy(path: str, request: Request) -> Response:
                 headers={**headers, **HEADERS},
                 params=params,
             )
-        logging.info(f"⏳ Duration: {duration.duration:.3f} s")
+        logging.info(f"⏳ [{id}] Duration: {duration.duration:.3f} s")
 
         headers = dict(response.headers)
         # Remove headers from response. These will be replaced with correct values.
@@ -205,7 +207,7 @@ async def proxy(path: str, request: Request) -> Response:
                 data = response.text
 
             with bz2.open(json_path, "wt", encoding="utf-8") as f:
-                logging.info(f"💾 Dump: {filename}.")
+                logging.info(f"💾 [{id}] Dump: {filename}.")
                 dump = {
                     "request": {
                         "id": request.state.request_id,
@@ -229,12 +231,7 @@ async def proxy(path: str, request: Request) -> Response:
         if response.is_error:
             # Upstream responded with 4xx/5xx status.
             upstream_status = response.status_code
-            logging.error(
-                "🚨 Upstream API error %s: %s %s.",
-                upstream_status,
-                method,
-                url,
-            )
+            logging.error(f"🚨 [{id}] Upstream API error {upstream_status}: {method} {url}.")
             # Return a proxied error to caller (don't leak stack trace).
             return JSONResponse(
                 content={
@@ -248,7 +245,7 @@ async def proxy(path: str, request: Request) -> Response:
                 status_code=502,
             )
         else:
-            logging.info("✅ Return response.")
+            logging.info(f"✅ [{id}] Return response.")
             return Response(
                 content=response.content,
                 status_code=response.status_code,
