@@ -22,6 +22,7 @@ from ibauth.timing import AsyncTimer
 from . import rate
 from .const import API_HOST, API_PORT, HEADERS, JOURNAL_DIR, VERSION
 from .middleware.request_id import RequestIdMiddleware
+from .rate import rate_loop
 from .system import router as system_router
 from .tickle import TICKLE_INTERVAL, TickleMode, tickle_loop
 from .util import logging_level
@@ -86,8 +87,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     tickle = asyncio.create_task(tickle_loop(app))
     tickle.add_done_callback(_tickle_done)
 
+    rate = asyncio.create_task(rate_loop())
+
     yield
     tickle.cancel()
+    rate.cancel()
     try:
         await tickle
     except:
@@ -96,6 +100,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # logged in the done callback (and we also end up here).
         #
         # Will be called after the done callback has run.
+        pass
+    try:
+        await rate
+    except:
         pass
 
     await app.state.client.aclose()
@@ -172,8 +180,6 @@ async def proxy(path: str, request: Request) -> Response:
         # This keeps tests and some clients happy when we strip upstream headers.
         if "content-length" not in headers:
             headers["content-length"] = str(len(response.content))
-
-        await rate.log(path)
 
         def _write_journal() -> None:
             """

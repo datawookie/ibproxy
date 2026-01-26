@@ -1,8 +1,11 @@
+import asyncio
 import logging
 import time
 from collections import defaultdict, deque
 from datetime import UTC, datetime
 from threading import RLock
+
+from .const import RATE_LOG_INTERVAL
 
 times: dict[str, deque[float]] = defaultdict(deque)
 
@@ -143,3 +146,9 @@ def format(rate: float | None) -> str:
 async def log(endpoint: str | None = None) -> None:
     rps, period = await rate(endpoint)
     logging.info(f"⌚ Request rate (last {WINDOW} s): {format(rps)} Hz / {format(period)} s | ({endpoint or 'global'})")
+
+
+async def rate_loop() -> None:
+    while True:
+        await asyncio.sleep(RATE_LOG_INTERVAL)
+        await log()

@@ -15,3 +15,5 @@ JOURNAL_DIR = Path("./journal/")
 DATETIME_FMT = "%Y-%m-%d %H:%M:%S"
 
 STATUS_URL = "https://www.interactivebrokers.com/en/software/systemStatus.php"
+
+RATE_LOG_INTERVAL: float = 10.0
