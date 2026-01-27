@@ -102,8 +102,6 @@ def _make_mock_httpx(
 @pytest.mark.asyncio
 @freeze_time("2025-08-22T12:34:56.789000Z")
 async def test_proxy_forwards_and_strips_headers(client, monkeypatch, tmp_path) -> None:
-    monkeypatch.setattr(appmod, "JOURNAL_DIR", tmp_path)
-
     # Patch rate.record() to avoid time dependence and to return the fixed datetime
     async def _record(_path: str) -> datetime:
         # Maintain minimal realistic rate state.
@@ -149,8 +147,6 @@ async def test_proxy_forwards_and_strips_headers(client, monkeypatch, tmp_path) 
 
 
 def test_proxy_handles_post_json_body(client, monkeypatch, tmp_path) -> None:
-    monkeypatch.setattr(appmod, "JOURNAL_DIR", tmp_path)
-
     captured = _make_mock_httpx(monkeypatch)
     payload = {"orders": [{"conid": 123, "side": "BUY"}]}
 
@@ -249,8 +245,6 @@ async def test_upstream_500_results_in_502_and_logs(
     # Capture all logging at DEBUG level and above.
     caplog.set_level(logging.DEBUG)
 
-    monkeypatch.setattr(appmod, "JOURNAL_DIR", tmp_path)
-
     # TODO: This is repeated from another test. Factor into separate function or fixture.
     async def _record(_path: str) -> datetime:
         # Maintain minimal realistic rate state.
@@ -283,3 +277,19 @@ async def test_upstream_500_results_in_502_and_logs(
     assert dump["request"]["url"].endswith("/v1/api/portfolio/DUH638336/summary")
     assert json.dumps(dump["response"]["data"]) == ERROR_BODY
     assert isinstance(dump["duration"], float)
+
+
+@pytest.mark.asyncio
+async def test_proxy_reconnects_on_401(monkeypatch, client) -> None:
+    """
+    Proxy should trigger a reconnect when upstream returns 401.
+    """
+    mock_reconnect = AsyncMock()
+    monkeypatch.setattr(appmod, "_reconnect", mock_reconnect, raising=False)
+
+    _make_mock_httpx(monkeypatch, status=401, body='{"error": "Unauthorized"}')
+
+    resp = client.get("/v1/api/iserver/accounts")
+
+    assert resp.status_code == 502
+    mock_reconnect.assert_awaited_once_with(appmod.app.state)

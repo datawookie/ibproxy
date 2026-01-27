@@ -24,6 +24,7 @@ from .const import API_HOST, API_PORT, HEADERS, JOURNAL_DIR, VERSION
 from .middleware.request_id import RequestIdMiddleware
 from .rate import enforce_rate_limit, rate_loop
 from .system import router as system_router
+from .system.reset import _reconnect
 from .tickle import TICKLE_INTERVAL, TickleMode, tickle_loop
 from .util import logging_level
 
@@ -231,6 +232,15 @@ async def proxy(path: str, request: Request) -> Response:
         if response.is_error:
             # Upstream responded with 4xx/5xx status.
             upstream_status = response.status_code
+
+            if upstream_status == 401:
+                logging.warning(f"🔄 [{id}] Unauthorized from upstream; attempting reconnect.")
+                try:
+                    await _reconnect(request.app.state)
+                except Exception:
+                    # Do not mask the original error; just log reconnect failure.
+                    logging.exception("Reconnect attempt failed after 401.")
+
             logging.error(f"🚨 [{id}] Upstream API error {upstream_status}: {method} {url}.")
             # Return a proxied error to caller (don't leak stack trace).
             return JSONResponse(

@@ -26,6 +26,14 @@ def disable_rate_limit(monkeypatch):
     monkeypatch.setattr(appmod, "enforce_rate_limit", _noop_enforce)
 
 
+@pytest.fixture(autouse=True)
+def journal_dir_temporary(monkeypatch, tmp_path):
+    """
+    Set journal directory to a temporary location for tests.
+    """
+    monkeypatch.setattr(appmod, "JOURNAL_DIR", tmp_path)
+
+
 @pytest.fixture
 def client(monkeypatch) -> TestClient:
     # Avoid the real tickle loop doing anything noisy.
