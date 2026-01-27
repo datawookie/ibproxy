@@ -14,11 +14,20 @@ times: dict[str, deque[float]] = defaultdict(deque)
 #
 lock = RLock()
 
-# Sliding window in seconds.
-#
-# This is the time interval that's used to calculate the rates.
-#
-WINDOW = 30
+# Sliding window in seconds used to compute rates. This value is exposed and
+# can be overridden via ibproxy.rate.WINDOW for tests.
+DEFAULT_WINDOW = 30
+
+
+def _window() -> float:
+    """Return the current rate window, falling back to the default."""
+    try:
+        import ibproxy.rate as ratemod
+
+        return getattr(ratemod, "WINDOW", DEFAULT_WINDOW)
+    except Exception:
+        return DEFAULT_WINDOW
+
 
 # IBKR rate limits are documented at
 #
@@ -41,8 +50,9 @@ async def prune(queue: deque[float] | None = None, now: float | None = None) -> 
         now = time.time()
 
     with lock:
+        window = _window()
         for dq in [queue] if queue else times.values():
-            while dq and dq[0] < now - WINDOW:
+            while dq and dq[0] < now - window:
                 logging.debug("Prune timestamp (%.3f).", dq[0])
                 dq.popleft()
 
@@ -145,7 +155,8 @@ def format(rate: float | None) -> str:
 
 async def log(endpoint: str | None = None) -> None:
     rps, period = await rate(endpoint)
-    logging.info(f"⌚ Request rate (last {WINDOW} s): {format(rps)} Hz / {format(period)} s | ({endpoint or 'global'})")
+    window = _window()
+    logging.info(f"⌚ Request rate (last {window} s): {format(rps)} Hz / {format(period)} s | ({endpoint or 'global'})")
 
 
 async def rate_loop() -> None:

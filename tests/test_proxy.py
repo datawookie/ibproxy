@@ -37,6 +37,7 @@ def _clean_rate_and_auth(monkeypatch):
     ratemod.times.clear()
 
 
+# TODO: Can this be consolidated with mock_request() in conftest.py?
 def _make_mock_httpx(
     monkeypatch,
     *,
@@ -79,7 +80,7 @@ def _make_mock_httpx(
             if not (200 <= self.status_code < 400):
                 raise Exception(f"status {self.status_code}")
 
-    async def fake_request(self, *, method, url, content, headers, params, timeout):
+    async def fake_request(self, *, method, url, content, headers, params, timeout=5):
         # stash what the proxy sent upstream
         capture["method"] = method
         capture["url"] = url
@@ -153,8 +154,8 @@ def test_proxy_handles_post_json_body(client, monkeypatch, tmp_path) -> None:
     captured = _make_mock_httpx(monkeypatch)
     payload = {"orders": [{"conid": 123, "side": "BUY"}]}
 
-    resp = client.post("/v1/api/iserver/somepost", json=payload)
-    assert resp.status_code == 200
+    response = client.post("/v1/api/iserver/somepost", json=payload)
+    assert response.status_code == 200
     # Upstream got the raw JSON bytes (content, not form-encoded)
     assert json.loads(captured["content"].decode("utf-8")) == payload
 

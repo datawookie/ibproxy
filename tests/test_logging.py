@@ -12,10 +12,11 @@ import ibproxy.main as ibproxy
 async def test_proxy_logs_headers_and_params(
     mock_http_request, caplog: pytest.LogCaptureFixture, dummy_response, mock_request
 ):
-    """Proxy should log headers and query params when debug logging is enabled."""
+    """
+    Proxy should log headers and query params when debug logging is enabled.
+    """
     mock_http_request.return_value = dummy_response
 
-    # Create request with query params and headers using the factory
     request = mock_request.update(
         method="POST",
         query_string=b"foo=bar",
@@ -37,9 +38,9 @@ async def test_proxy_logs_headers_and_params(
 def test_proxy_logs_request(caplog: pytest.LogCaptureFixture, dummy_response, client: TestClient):
     with patch("ibproxy.main.httpx.AsyncClient.request", return_value=dummy_response):
         caplog.set_level("INFO")
-        resp = client.get("/test")
-        assert resp.status_code == 200
+        response = client.get("/test")
+        assert response.status_code == 200
 
         logs = [rec.getMessage() for rec in caplog.records]
-        assert any(re.match(r"🔵 Request: \[.*\] GET", m) for m in logs)
-        assert any("✅ Return response." in m for m in logs)
+        assert any(re.match(r"🔵 \[.*\] Request: GET", m) for m in logs)
+        assert any(re.match(r"✅ \[.*\] Return response.", m) for m in logs)

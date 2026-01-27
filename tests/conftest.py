@@ -12,6 +12,20 @@ import ibproxy.main as appmod
 REQUEST_ID = "test-req-id"
 
 
+@pytest.fixture(autouse=True)
+def disable_rate_limit(monkeypatch):
+    """
+    Disable rate limiting for tests.
+
+    This is particularly important for tests that freeze time.
+    """
+
+    async def _noop_enforce(_id: str) -> None:
+        return
+
+    monkeypatch.setattr(appmod, "enforce_rate_limit", _noop_enforce)
+
+
 @pytest.fixture
 def client(monkeypatch) -> TestClient:
     # Avoid the real tickle loop doing anything noisy.
@@ -29,7 +43,19 @@ def client(monkeypatch) -> TestClient:
     gate.set()
     appmod.app.state.gate = gate
 
-    return TestClient(appmod.app)
+    # Provide an AsyncClient so the proxy handler can forward requests.
+    http_client = httpx.AsyncClient()
+    appmod.app.state.client = http_client
+
+    client = TestClient(appmod.app)
+    try:
+        yield client
+    finally:
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(http_client.aclose())
+        finally:
+            loop.close()
 
 
 @pytest.fixture
@@ -86,6 +112,8 @@ def mock_request() -> Request:
         gate = asyncio.Event()
         gate.set()
         request.app.state.gate = gate
+
+        request.app.state.client = httpx.AsyncClient()
 
         return request
 
