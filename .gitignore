@@ -9,3 +9,4 @@ journal
 .coverage
 *.bz2
 *.png
+.codex

@@ -2,6 +2,10 @@ version = 1
 revision = 3
 requires-python = ">=3.12"
 
+[options]
+exclude-newer = "2026-04-16T18:04:17.64429442Z"
+exclude-newer-span = "P7D"
+
 [[package]]
 name = "annotated-types"
 version = "0.7.0"
@@ -346,21 +350,20 @@ wheels = [
 
 [[package]]
 name = "ibauth"
-version = "0.1.2"
+version = "0.1.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
     { name = "httpx" },
-    { name = "mypy" },
     { name = "pydantic" },
     { name = "pydantic-extra-types" },
     { name = "pyjwt" },
     { name = "pyyaml" },
     { name = "tenacity" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e6/1c/958d72d2b880b774a1ae7a32e350e7541f56e8530afec835b0b9c8784b42/ibauth-0.1.2.tar.gz", hash = "sha256:c95c6c4d467083565ead5ef30ec4069714f7d7162e10f73e7fb03b104bbed651", size = 15311, upload-time = "2026-01-23T05:17:03.413Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cb/32/f2f1c8544f7b45b8b34b54470c79099cb001cdcca139871c134d1f92a1a1/ibauth-0.1.4.tar.gz", hash = "sha256:4f064adc20b89e3997df673df94542775b6e3c7d1edbeb1395810733b219a491", size = 14908, upload-time = "2026-02-01T07:37:30.526Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c1/80/4f240da68c3b0210d55be9e990791da4fe90d9274e022d737eb00de66b1e/ibauth-0.1.2-py3-none-any.whl", hash = "sha256:6c942c018ac45b2bfb7c24ac4f418c17e5183cc563ae41d0c6a41a9c65bb8221", size = 11614, upload-time = "2026-01-23T05:17:02.203Z" },
+    { url = "https://files.pythonhosted.org/packages/60/2f/cf650e7d81d104e02bfe7cf2a7585a21e80b5a509114bcfc10f4f66ee485/ibauth-0.1.4-py3-none-any.whl", hash = "sha256:128d3612986c1177fcf22ced39782922c31e28659f82d60b3475a224d23ce906", size = 11413, upload-time = "2026-02-01T07:37:29.203Z" },
 ]
 
 [[package]]
@@ -402,7 +405,7 @@ requires-dist = [
     { name = "curlify2", specifier = ">=2.0.0" },
     { name = "fastapi", specifier = ">=0.119.0" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "ibauth", specifier = ">=0.1.2" },
+    { name = "ibauth", specifier = ">=0.1.4" },
     { name = "psutil", specifier = ">=7.2.1" },
     { name = "pydantic", specifier = ">=2.11.10" },
     { name = "uvicorn", specifier = ">=0.38.0" },
