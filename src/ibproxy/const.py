@@ -20,3 +20,5 @@ RATE_LOG_INTERVAL: float = 10.0
 
 RATE_LIMIT: float = 10
 RATE_LIMIT_BURST: float = 10
+
+RESTART_COOLDOWN: float = 60.0

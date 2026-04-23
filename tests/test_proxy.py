@@ -31,10 +31,13 @@ class _MockAuth:
 def _clean_rate_and_auth(monkeypatch):
     # fresh rate state for each test
     ratemod.times.clear()
+    appmod._restart_scheduled = False
+    monkeypatch.delenv(appmod._LAST_RESTART_ENV, raising=False)
     # set a mock auth so routes can build the upstream URL/header
     monkeypatch.setattr(appmod.app.state, "auth", _MockAuth())
     yield
     ratemod.times.clear()
+    appmod._restart_scheduled = False
 
 
 # TODO: Can this be consolidated with mock_request() in conftest.py?
@@ -199,6 +202,49 @@ def test_proxy_handles_request_error(client, monkeypatch) -> None:
     assert resp.json() == {"error": "Proxy error: boom"}
 
 
+def test_exec_self_records_restart_timestamp(monkeypatch) -> None:
+    def _raise_execv(_executable, _argv):
+        raise RuntimeError("stop exec")
+
+    monkeypatch.setattr(appmod.time, "time", lambda: 1_234.5)
+    monkeypatch.setattr(appmod.os, "execv", _raise_execv)
+    monkeypatch.delenv(appmod._LAST_RESTART_ENV, raising=False)
+
+    with pytest.raises(RuntimeError, match="stop exec"):
+        appmod._exec_self()
+
+    assert appmod.os.environ[appmod._LAST_RESTART_ENV] == "1234.5"
+
+
+def test_schedule_restart_suppresses_recent_restart(monkeypatch) -> None:
+    monkeypatch.setattr(appmod.time, "time", lambda: 1_000.0)
+    monkeypatch.setenv(appmod._LAST_RESTART_ENV, str(1_000.0 - (constmod.RESTART_COOLDOWN - 1)))
+
+    assert appmod.schedule_restart("upstream returned 503") is False
+    assert appmod._restart_scheduled is False
+
+
+def test_schedule_restart_allows_restart_after_cooldown(monkeypatch) -> None:
+    exec_self = Mock()
+
+    class ImmediateThread:
+        def __init__(self, *, target, name, daemon):
+            self.target = target
+
+        def start(self):
+            self.target()
+
+    monkeypatch.setattr(appmod.time, "time", lambda: 1_000.0)
+    monkeypatch.setattr(appmod.time, "sleep", lambda _delay: None)
+    monkeypatch.setattr(appmod.threading, "Thread", ImmediateThread)
+    monkeypatch.setattr(appmod, "_exec_self", exec_self)
+    monkeypatch.setenv(appmod._LAST_RESTART_ENV, str(1_000.0 - (constmod.RESTART_COOLDOWN + 1)))
+
+    assert appmod.schedule_restart("upstream returned 503", delay=0.01) is True
+    exec_self.assert_called_once_with()
+    assert appmod._restart_scheduled is True
+
+
 @pytest.mark.asyncio
 @patch("ibproxy.main.uvicorn.run")
 @patch("ibproxy.main.ibauth.auth_from_yaml")
@@ -239,7 +285,7 @@ async def test_main_runs_with_auth_and_uvicorn(
 
 @pytest.mark.asyncio
 @freeze_time("2025-08-29T15:00:10.000000Z")
-async def test_upstream_500_results_in_502_and_logs(
+async def test_upstream_503_results_in_502_logs_and_schedules_restart(
     monkeypatch, client, caplog: pytest.LogCaptureFixture, tmp_path
 ) -> None:
     # Capture all logging at DEBUG level and above.
@@ -253,6 +299,8 @@ async def test_upstream_500_results_in_502_and_logs(
         return now
 
     monkeypatch.setattr(ratemod, "record", _record)
+    mock_schedule_restart = Mock(return_value=True)
+    monkeypatch.setattr(appmod, "schedule_restart", mock_schedule_restart)
 
     ERROR_BODY = '{"error": "Service Unavailable", "statusCode": 503}'
 
@@ -268,6 +316,9 @@ async def test_upstream_500_results_in_502_and_logs(
     assert body.get("upstream_status") == 503
     assert body.get("detail") == ERROR_BODY
 
+    mock_schedule_restart.assert_called_once()
+    restart_reason = mock_schedule_restart.call_args.args[0]
+    assert "upstream returned 503" in restart_reason
     assert any("Upstream API error 503" in rec.message for rec in caplog.records)
 
     expected_file = tmp_path / "20250829" / f"20250829-150010-{request_id}.json.bz2"
@@ -277,6 +328,19 @@ async def test_upstream_500_results_in_502_and_logs(
     assert dump["request"]["url"].endswith("/v1/api/portfolio/DUH638336/summary")
     assert json.dumps(dump["response"]["data"]) == ERROR_BODY
     assert isinstance(dump["duration"], float)
+
+
+@pytest.mark.asyncio
+async def test_upstream_500_does_not_schedule_restart(monkeypatch, client) -> None:
+    mock_schedule_restart = Mock(return_value=True)
+    monkeypatch.setattr(appmod, "schedule_restart", mock_schedule_restart)
+
+    _make_mock_httpx(monkeypatch, status=500, body='{"error": "Internal Server Error"}')
+
+    resp = client.get("/v1/api/portfolio/DUH638336/summary")
+
+    assert resp.status_code == 502
+    mock_schedule_restart.assert_not_called()
 
 
 @pytest.mark.asyncio

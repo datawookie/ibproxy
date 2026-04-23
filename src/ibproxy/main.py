@@ -4,6 +4,10 @@ import bz2
 import json
 import logging
 import logging.config
+import os
+import sys
+import threading
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -20,7 +24,7 @@ from fastapi.responses import JSONResponse, Response
 from ibauth.timing import AsyncTimer
 
 from . import rate
-from .const import API_HOST, API_PORT, HEADERS, JOURNAL_DIR, VERSION
+from .const import API_HOST, API_PORT, HEADERS, JOURNAL_DIR, RESTART_COOLDOWN, VERSION
 from .middleware.request_id import RequestIdMiddleware
 from .rate import enforce_rate_limit, rate_loop
 from .system import router as system_router
@@ -47,8 +51,73 @@ warnings.filterwarnings(
 #
 tickle = None
 TICKLE_MODE: TickleMode = TickleMode.ALWAYS
+_restart_lock = threading.Lock()
+_restart_scheduled = False
+_LAST_RESTART_ENV = "IBPROXY_LAST_RESTART_TS"
 
 # ==============================================================================
+
+
+def _exec_self() -> None:
+    """
+    Replace the current process with a fresh copy of itself.
+
+    This is a rather aggressive approach and I would much rather just reconnect.
+    """
+    os.environ[_LAST_RESTART_ENV] = str(time.time())
+    logging.warning("♻️ Restarting ibproxy process.")
+    logging.shutdown()
+    os.execv(sys.executable, [sys.executable, *sys.argv])
+
+
+def _last_restart_time() -> float | None:
+    raw = os.environ.get(_LAST_RESTART_ENV)
+    if raw is None:
+        return None
+
+    try:
+        return float(raw)
+    except ValueError:
+        logging.warning("♻️ Ignoring invalid %s value: %r", _LAST_RESTART_ENV, raw)
+        return None
+
+
+def schedule_restart(reason: str, delay: float = 0.1) -> bool:
+    """
+    Schedule a one-shot process restart.
+
+    Returns True when a restart was scheduled by this call, False when a restart
+    is already pending.
+    """
+    global _restart_scheduled
+
+    now = time.time()
+    if (last_restart := _last_restart_time()) is not None:
+        age = now - last_restart
+        if age < RESTART_COOLDOWN:
+            logging.error(
+                "♻️ Restart suppressed for %.1f s cooldown after recent restart (%.1f s ago): %s",
+                RESTART_COOLDOWN,
+                age,
+                reason,
+            )
+            return False
+
+    with _restart_lock:
+        if _restart_scheduled:
+            logging.warning("♻️ Restart already scheduled; ignoring duplicate trigger (%s).", reason)
+            return False
+
+        _restart_scheduled = True
+
+    def _restart_worker() -> None:
+        if delay > 0:
+            time.sleep(delay)
+        _exec_self()
+
+    logging.error("♻️ Scheduling ibproxy restart: %s", reason)
+    threading.Thread(target=_restart_worker, name="ibproxy-restart", daemon=True).start()
+    return True
 
 
 @asynccontextmanager
@@ -240,6 +309,8 @@ async def proxy(path: str, request: Request) -> Response:
                 except Exception:
                     # Do not mask the original error; just log reconnect failure.
                     logging.exception("Reconnect attempt failed after 401.")
+            elif upstream_status in {502, 503}:
+                schedule_restart(f"upstream returned {upstream_status} for {method} {url}")
 
             logging.error(f"🚨 [{id}] Upstream API error {upstream_status}: {method} {url}.")
             # Return a proxied error to caller (don't leak stack trace).
