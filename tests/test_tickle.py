@@ -241,6 +241,63 @@ async def test_tickle_always(monkeypatch, caplog: pytest.LogCaptureFixture):
 
 @pytest.mark.asyncio
 @pytest.mark.disable_noop_get_system_status
+async def test_log_status_handles_runtime_error(monkeypatch, caplog: pytest.LogCaptureFixture):
+    """log_status() silently logs when get_system_status raises RuntimeError (e.g. bad HTML)."""
+
+    async def raise_runtime_error():
+        raise RuntimeError("Bad HTML from IBKR status page")
+
+    monkeypatch.setattr(ticklemod, "get_system_status", raise_runtime_error)
+
+    caplog.set_level(logging.ERROR)
+    await ticklemod.log_status()
+
+    assert any("Bad HTML from IBKR status page" in rec.message for rec in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_tickle_loop_warns_when_not_connected(monkeypatch, caplog: pytest.LogCaptureFixture, mock_system_metrics):
+    """When is_connected() returns False after a tickle, a warning is logged."""
+    monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
+
+    auth = DummyAuth(authenticated=False)
+    app = make_mock_app(auth, "always", 0.01)
+
+    caplog.set_level(logging.WARNING)
+    task = asyncio.create_task(appmod.tickle_loop(app))
+    await asyncio.sleep(0.05)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert any("Not connected" in rec.message for rec in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_tickle_loop_handles_metrics_failure(monkeypatch, caplog: pytest.LogCaptureFixture):
+    """A failure in system metrics collection is logged without crashing the loop."""
+    monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
+
+    async def raise_error():
+        raise RuntimeError("disk unavailable")
+
+    monkeypatch.setattr(ticklemod, "cpu_percent", raise_error)
+
+    auth = DummyAuth()
+    app = make_mock_app(auth, "always", 0.01)
+
+    caplog.set_level(logging.ERROR)
+    task = asyncio.create_task(appmod.tickle_loop(app))
+    await asyncio.sleep(0.05)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert any("Failed to collect system metrics" in rec.message for rec in caplog.records)
+
+
+@pytest.mark.asyncio
+@pytest.mark.disable_noop_get_system_status
 async def test_tickle_status_timeout(timeout_get_system_status, monkeypatch, caplog: pytest.LogCaptureFixture):
     monkeypatch.setattr(ticklemod, "TICKLE_MIN_SLEEP", 0.001)
 

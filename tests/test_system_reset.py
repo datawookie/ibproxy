@@ -1,5 +1,7 @@
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
+
+from tenacity import RetryError
 
 from ibproxy.models import SystemStatus
 
@@ -87,6 +89,35 @@ def test_reset_endpoint_status_fetch_failure(client, monkeypatch):
 
     assert response.status_code == 502
     assert "Failed to parse IBKR status page!" in response.json()["detail"]
+
+
+def test_reset_continues_after_disconnect_timeout(client, monkeypatch, caplog):
+    """When all disconnect retries are exhausted, reset logs a warning and continues to reconnect."""
+    from ibproxy import main
+    from ibproxy.system import reset as reset_module
+
+    async def always_retry_error(auth):
+        raise RetryError(MagicMock())
+
+    monkeypatch.setattr(reset_module, "_wait_for_disconnected", always_retry_error)
+
+    mock_auth = AsyncMock()
+    mock_auth.logout = AsyncMock()
+    mock_auth.connect = AsyncMock()
+    main.app.state.auth = mock_auth
+
+    dummy_status = SystemStatus(label="Normal Operations", colour="🟩")
+
+    async def mock_get_system_status():
+        return dummy_status
+
+    monkeypatch.setattr(reset_module, "get_system_status", mock_get_system_status)
+
+    response = client.post("/reset")
+
+    assert response.status_code == 200
+    assert "Failed to disconnect" in caplog.text
+    mock_auth.connect.assert_called_once()
 
 
 def test_reset_endpoint_uses_correct_config(client, monkeypatch):

@@ -74,3 +74,17 @@ async def test_get_system_status_failed():
 
     with pytest.raises(RuntimeError, match="Failed to parse IBKR status page"):
         await get_system_status()
+
+
+def test_status_endpoint_returns_502_on_runtime_error(monkeypatch):
+    from ibproxy.system import status as status_module
+
+    async def raise_runtime_error():
+        raise RuntimeError("Failed to parse IBKR status page!")
+
+    monkeypatch.setattr(status_module, "get_system_status", raise_runtime_error)
+
+    client = TestClient(app)
+    response = client.get("/status")
+    assert response.status_code == 502
+    assert "Failed to parse IBKR status page!" in response.json()["detail"]

@@ -343,6 +343,37 @@ async def test_upstream_500_does_not_schedule_restart(monkeypatch, client) -> No
     mock_schedule_restart.assert_not_called()
 
 
+def test_last_restart_time_returns_none_when_env_not_set(monkeypatch) -> None:
+    monkeypatch.delenv(appmod._LAST_RESTART_ENV, raising=False)
+    assert appmod._last_restart_time() is None
+
+
+def test_last_restart_time_returns_none_on_invalid_value(monkeypatch, caplog) -> None:
+    monkeypatch.setenv(appmod._LAST_RESTART_ENV, "not-a-float")
+    with caplog.at_level(logging.WARNING):
+        result = appmod._last_restart_time()
+    assert result is None
+    assert any("Ignoring invalid" in rec.message for rec in caplog.records)
+
+
+def test_schedule_restart_suppresses_duplicate_trigger(monkeypatch, caplog) -> None:
+    appmod._restart_scheduled = True
+    monkeypatch.delenv(appmod._LAST_RESTART_ENV, raising=False)
+    with caplog.at_level(logging.WARNING):
+        result = appmod.schedule_restart("duplicate trigger")
+    assert result is False
+    assert any("already scheduled" in rec.message for rec in caplog.records)
+
+
+def test_proxy_warns_on_missing_content_type(monkeypatch, client, caplog) -> None:
+    """Upstream response with no content-type header logs a warning."""
+    _make_mock_httpx(monkeypatch, body=b"plain text body", headers={})
+    with caplog.at_level(logging.WARNING):
+        resp = client.get("/v1/api/some/endpoint")
+    assert resp.status_code == 200
+    assert any("No content type" in rec.message for rec in caplog.records)
+
+
 @pytest.mark.asyncio
 async def test_proxy_reconnects_on_401(monkeypatch, client) -> None:
     """

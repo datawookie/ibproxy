@@ -3,6 +3,8 @@ from collections import deque
 import pytest
 
 import ibproxy.rate as ratemod
+from ibproxy.rate import limit as limitmod
+from ibproxy.rate.limit import LeakyBucket, enforce_rate_limit
 
 
 @pytest.fixture(autouse=True)
@@ -46,3 +48,46 @@ def test_latest_ignores_empty_deques_in_overall():
     ratemod.times["empty"] = deque()  # explicitly empty
     # overall should still return 2.0 and not fail due to the empty deque
     assert ratemod.latest() == 2.0
+
+
+@pytest.mark.asyncio
+async def test_leaky_bucket_acquire_returns_token_when_available():
+    bucket = LeakyBucket(rate=10.0, burst=5.0)
+    acquired, wait_time = await bucket.acquire(tokens=1.0)
+    assert acquired is True
+    assert wait_time == 0.0
+
+
+@pytest.mark.asyncio
+async def test_leaky_bucket_acquire_returns_wait_time_when_depleted():
+    # Burst of 1 token, rate of 1/s — one acquire drains it entirely.
+    bucket = LeakyBucket(rate=1.0, burst=1.0)
+    await bucket.acquire(tokens=1.0)
+    acquired, wait_time = await bucket.acquire(tokens=1.0)
+    assert acquired is False
+    assert wait_time > 0.0
+
+
+@pytest.mark.asyncio
+async def test_enforce_rate_limit_sleeps_and_retries_when_rate_limited(monkeypatch):
+    call_count = {"n": 0}
+
+    async def fake_acquire(tokens=1.0):
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            return False, 0.1
+        return True, 0.0
+
+    monkeypatch.setattr(limitmod._bucket, "acquire", fake_acquire)
+
+    slept = []
+
+    async def fake_sleep(delay):
+        slept.append(delay)
+
+    monkeypatch.setattr(limitmod.asyncio, "sleep", fake_sleep)
+
+    await enforce_rate_limit("test-id")
+
+    assert call_count["n"] == 2
+    assert slept == [pytest.approx(0.1)]
