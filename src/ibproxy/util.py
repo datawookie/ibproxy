@@ -1,7 +1,8 @@
 import asyncio
 import logging
-import psutil
 from pathlib import Path
+
+import psutil
 
 
 def logging_level(logger: logging.Logger | None = None) -> int:
